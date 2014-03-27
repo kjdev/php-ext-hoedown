@@ -1,8 +1,11 @@
 Makefile*
-*.m4
 *.la
 *.lo
-config.*
+acinclude.m4
+aclocal.m4
+config.guess
+config.h*
+config.sub
 configure*
 install-sh
 libtool
