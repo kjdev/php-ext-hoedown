@@ -1,5 +1,7 @@
 # PHP Extension for Hoedown
 
+[![Build Status](https://secure.travis-ci.org/kjdev/php-ext-hoedown.png?branch=master)](http://travis-ci.org/kjdev/php-ext-hoedown)
+
 This extension allows Hoedown.
 
 ## Build
