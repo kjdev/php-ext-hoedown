@@ -102,15 +102,15 @@ Hoedown::CLASS\_TASK\_LIST       | string | ""      | Render class attribute in 
 
 ### Methods
 
-* [Hoedown::\_\_construct](#hoedown----construct) - Create a Hoedown instance
-* [Hoedown::getOption](#hoedown--getoption) - Retrieve a Hoedown option value
-* [Hoedown::setOption](#hoedown--setoption) - Set Hoedown option
-* [Hoedown::setOptions](#hoedown--setoptions) - Set Hoedown options
-* [Hoedown::parse](#hoedown--parse) - retrieve html by parse string as markdown
-* [Hoedown::parseString](#hoedown--parsestring) - retrieve html by parse string as markdown
-* [Hoedown::parseFile](#hoedown--parsefile) - retrieve html by parse file as markdown
-* [Hoedown::ofString](#hoedown--ofstring) - retrieve html by parse string as markdown
-* [Hoedown::ofFile](#hoedown--offile) - retrieve html by parse file as markdown
+* [Hoedown::\_\_construct](#hoedown__construct) - Create a Hoedown instance
+* [Hoedown::getOption](#hoedowngetoption) - Retrieve a Hoedown option value
+* [Hoedown::setOption](#hoedownsetoption) - Set Hoedown option
+* [Hoedown::setOptions](#hoedownsetoptions) - Set Hoedown options
+* [Hoedown::parse](#hoedownparse) - retrieve html by parse string as markdown
+* [Hoedown::parseString](#hoedownparsestring) - retrieve html by parse string as markdown
+* [Hoedown::parseFile](#hoedownparsefile) - retrieve html by parse file as markdown
+* [Hoedown::ofString](#hoedownofstring) - retrieve html by parse string as markdown
+* [Hoedown::ofFile](#hoedownoffile) - retrieve html by parse file as markdown
 
 ---
 
