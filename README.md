@@ -228,7 +228,7 @@ public string parseString(string $string, mixed &$state = NULL)
 
 retrieve html by parse string as markdown.
 
-alias: [Hoedown::parse](##hoedown--parse)
+alias: [Hoedown::parse](#hoedownparse)
 
 ---
 
