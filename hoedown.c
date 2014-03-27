@@ -504,20 +504,21 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 #endif
             document = hoedown_document_new(renderer, options->extension, 16);
 
-            hoedown_document_render(document, buf, contents, length);
+            hoedown_document_render(document, buf,
+                                    (const uint8_t *)contents, length);
 
             hoedown_document_free(document);
             hoedown_html_renderer_free(renderer);
 
             if (options->renderer == HOEDOWN_OPT_RENDERER_TOC) {
-                RETVAL_STRINGL(buf->data, buf->size, 1);
+                RETVAL_STRINGL((char *)buf->data, buf->size, 1);
                 hoedown_buffer_free(buf);
                 return 0;
             } else {
                 zval *zv;
 
                 MAKE_STD_ZVAL(zv);
-                ZVAL_STRINGL(zv, buf->data, buf->size, 1);
+                ZVAL_STRINGL(zv, (char *)buf->data, buf->size, 1);
 
                 if (Z_TYPE_P(return_state) != IS_ARRAY) {
                     array_init(return_state);
@@ -552,14 +553,15 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     document = hoedown_document_new(renderer, options->extension, 16);
 
     /* execute parse */
-    hoedown_document_render(document, buf, contents, length);
+    hoedown_document_render(document, buf,
+                            (const uint8_t *)contents, length);
 
     /* cleanup */
     hoedown_document_free(document);
     hoedown_html_renderer_free(renderer);
 
     /* setting return value */
-    RETVAL_STRINGL(buf->data, buf->size, 1);
+    RETVAL_STRINGL((char *)buf->data, buf->size, 1);
 
     /* cleanup buffer */
     hoedown_buffer_free(buf);
@@ -645,7 +647,6 @@ HOEDOWN_METHOD(ofString)
     char *buf;
     int buf_len;
     zval *opts = NULL, *state = NULL;
-    php_hoedown_t *intern;
     php_hoedown_options_t options;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az",
@@ -680,7 +681,6 @@ HOEDOWN_METHOD(ofFile)
     char *contents = NULL;
     php_stream *stream;
     zval *opts = NULL, *state = NULL;
-    php_hoedown_t *intern;
     php_hoedown_options_t options;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az",
