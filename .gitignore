@@ -6,6 +6,9 @@ aclocal.m4
 config.guess
 config.h*
 config.sub
+config.log
+config.nice
+config.status
 configure*
 install-sh
 libtool
