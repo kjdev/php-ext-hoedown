@@ -14,7 +14,7 @@ This extension allows Hoedown.
 % make install
 ```
 
-## Configration
+## Configuration
 
 hoedown.ini:
 
