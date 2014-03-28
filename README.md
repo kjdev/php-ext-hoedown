@@ -7,11 +7,13 @@ This extension allows Hoedown.
 ## Build
 
 ```
-% phpize
-% ./configure
-% make
-% make test
-% make install
+git clone https://github.com/kjdev/php-ext-hoedown --recursive
+cd php-ext-hoedown
+phpize
+./configure
+make
+make test
+sudo make install
 ```
 
 ## Configuration
