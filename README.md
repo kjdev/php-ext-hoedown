@@ -7,6 +7,10 @@ This extension allows Hoedown.
 ## Build
 
 ```
+% git clone --depth=1 https://github.com/kjdev/php-ext-hoedown.git
+% cd php-ext-hoedown
+% git submodule init
+% git submodule update
 % phpize
 % ./configure
 % make
