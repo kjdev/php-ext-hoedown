@@ -115,6 +115,8 @@ Hoedown::CLASS\_TASK\_LIST       | string | ""      | Render class attribute in 
 * [Hoedown::parseFile](#hoedownparsefile) - retrieve html by parse file as markdown
 * [Hoedown::ofString](#hoedownofstring) - retrieve html by parse string as markdown
 * [Hoedown::ofFile](#hoedownoffile) - retrieve html by parse file as markdown
+* [Hoedown::addRender](#hoedownaddrender) - Set Hoedown renderer function
+* [Hoedown::getRenders](#hoedowngetrenders) - retrieve renderer function
 
 ---
 
@@ -316,6 +318,41 @@ retrieve html by parse file as markdown (static method).
 
 Returns the retrieve html, or FALSE on error.
 
+---
+
+### Hoedown::addRender
+
+```php
+public bool addRender(string $name, callable $callback)
+```
+
+Set Hoedown renderer function.
+
+**Parameters:**
+
+* name
+
+  Hoedown rederer function name.
+
+* callback
+
+  The callable to be called.
+
+**Return Values:**
+
+Returns TRUE on success or FALSE on failure.
+
+---
+
+### Hoedown::getRenders
+
+retrieve renderer function.
+
+**Return Values:**
+
+Returns the retrieve renderer functions, or NULL.
+
+
 ## Examples
 
 * Setting a Hoedown option
@@ -396,3 +433,61 @@ The above example will output:
 </li>
 </ul>
 ```
+
+## HTML render
+
+```php
+$hoedown = new Hoedown;
+
+$hoedown->addRender('blockcode', function($text, $lang) {
+        // Use Pygmentize
+        return Pygmentize::highlight($text, $lang);
+    });
+
+// or
+// function blockCode($text, $lang) {
+//     return Pygmentize::highlight($text, $lang);
+// }
+// $hoedown->addRender('blockcode', 'blockCode');
+
+// or
+// $hoedown->setOption(Hoedown::RENDERS, [
+//                         'blockcode' => function($text, $lang) {
+//                             return Pygmentize::highlight($text, $lang);
+//                         }]);
+
+echo $hoedown->parse("...markdown string...");
+```
+
+Render functions:
+
+* blockcode($text, $lang)
+* blockquote($text)
+* blockhtml($text)
+* paragraph($text)
+* header($text, $attr, $level)
+* hrule()
+* list($text, $flags)
+* listitem($text, $attr, $flags)
+* table($header, $body, $attr)
+* tablerow($text)
+* tablecell($text, $flags)
+* footnotes($text)
+* footnotedef($text, $num)
+* footnoteref($num)
+* codespan($text)
+* underline($text)
+* highlight($text)
+* quote($text)
+* strikethrough($text)
+* superscript($text)
+* emphasis($text)
+* doubleemphasis($text)
+* tripleemphasis($text)
+* autolink($link, $type)
+* image($link, $title, $alt, $attr)
+* link($link, $title, $content, $attr)
+* linebreak()
+* rawhtmltag($tag)
+* entity($entity)
+* normaltext($text)
