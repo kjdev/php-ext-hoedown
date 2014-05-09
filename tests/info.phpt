@@ -12,6 +12,5 @@ hoedown
 
 Hoedown support => enabled
 Extension Version => %d.%d.%d
-library version => %d.%d.%d
-library extras => enabled
+library version => %d.%d.%d.%d
 %a

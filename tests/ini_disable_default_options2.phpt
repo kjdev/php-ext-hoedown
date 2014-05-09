@@ -1,8 +1,8 @@
 --TEST--
-ini disable default options: ini On
+ini disable default options: ini file
 --SKIPIF--
 --INI--
-hoedown.disable_default_options = On
+hoedown.options =
 --FILE--
 <?php
 $text = <<<EOT

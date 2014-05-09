@@ -31,8 +31,21 @@ PHP_ARG_ENABLE(hoedown, whether to enable hoedown support,
 
 if test "$PHP_HOEDOWN" != "no"; then
 
+    dnl check HOEDOWN_VERSION_EXTRAS
+    AC_TRY_LINK(
+        [
+            #include "hoedown/src/version.h"
+        ],[
+            int extras = HOEDOWN_VERSION_EXTRAS;
+        ],[
+            AC_MSG_RESULT(yes)
+        ],[
+            AC_MSG_RESULT([error])
+            AC_MSG_ERROR([wrong hoedown lib extras version not found])
+        ])
+
     dnl Source hoedown
-    HOEDOWN_SOURCE="hoedown/src/autolink.c hoedown/src/escape.c hoedown/src/html_smartypants.c hoedown/src/buffer.c hoedown/src/html.c hoedown/src/stack.c hoedown/src/document.c hoedown/src/html_blocks.c hoedown/src/version.c"
+    HOEDOWN_SOURCE="hoedown/src/autolink.c hoedown/src/escape.c hoedown/src/html_smartypants.c hoedown/src/buffer.c hoedown/src/html.c hoedown/src/stack.c hoedown/src/document.c hoedown/src/html_blocks.c hoedown/src/hash.c hoedown/src/version.c"
 
     dnl PHP Extension
     PHP_NEW_EXTENSION(hoedown, hoedown.c $HOEDOWN_SOURCE, $ext_shared)

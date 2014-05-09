@@ -1,7 +1,7 @@
 #ifndef PHP_HOEDOWN_H
 #define PHP_HOEDOWN_H
 
-#define HOEDOWN_EXT_VERSION "0.2.0"
+#define HOEDOWN_EXT_VERSION "0.3.0"
 
 extern zend_module_entry hoedown_module_entry;
 #define phpext_hoedown_ptr &hoedown_module_entry
@@ -19,7 +19,7 @@ extern zend_module_entry hoedown_module_entry;
 #endif
 
 ZEND_BEGIN_MODULE_GLOBALS(hoedown)
-    zend_bool disable_default_options;
+    char *options;
 ZEND_END_MODULE_GLOBALS(hoedown)
 
 #ifdef ZTS

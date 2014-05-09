@@ -12,14 +12,14 @@ EOT;
 $hoedown = new Hoedown;
 
 echo "== closure: blockcode ==\n";
-$hoedown->addRender('blockcode', function($text, $lang) {
+$hoedown->addRender('blockcode', function($text, $lang, $attr) {
         return 'closure:'.$text.':'.$lang;
     });
 
 echo $hoedown->parse($text), "\n";
 
 echo "== function: blockcode ==\n";
-function blockcode($text, $lang) {
+function blockcode($text, $lang, $attr) {
     return 'function:'.$text.':'.$lang;
 }
 
@@ -30,7 +30,7 @@ echo $hoedown->parse($text), "\n";
 echo "== static closure: blockcode ==\n";
 echo Hoedown::ofString($text, array(
                            Hoedown::RENDERS => array(
-                               'blockcode' => function($text, $lang) {
+                               'blockcode' => function($text, $lang, $attr) {
                                    return 'static-closure:'.$text.':'.$lang;
                                }))), "\n";
 

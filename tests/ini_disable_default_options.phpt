@@ -40,8 +40,8 @@ echo Hoedown::ofString($text);
 
 unset($hoedown);
 
-echo "\n== INI: disable_default_options -> ON ==\n";
-ini_set('hoedown.disable_default_options', 'On');
+echo "\n== INI: hoedown.options -> None ==\n";
+ini_set('hoedown.options', '');
 
 echo "== parse ==\n";
 $hoedown = new Hoedown;
@@ -122,7 +122,7 @@ echo Hoedown::ofString($text);
 
 <p>hoge_fuga_foo</p>
 
-== INI: disable_default_options -> ON ==
+== INI: hoedown.options -> None ==
 == parse ==
 <h1>table</h1>
 

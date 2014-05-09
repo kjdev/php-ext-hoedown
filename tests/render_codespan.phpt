@@ -10,14 +10,14 @@ EOT;
 $hoedown = new Hoedown;
 
 echo "== closure: codespan ==\n";
-$hoedown->addRender('codespan', function($text) {
+$hoedown->addRender('codespan', function($text, $attr) {
         return 'closure:'.$text;
     });
 
 echo $hoedown->parse($text), "\n";
 
 echo "== function: codespan ==\n";
-function codespan($text) {
+function codespan($text, $attr) {
     return 'function:'.$text;
 }
 
@@ -28,7 +28,7 @@ echo $hoedown->parse($text), "\n";
 echo "== static closure: codespan ==\n";
 echo Hoedown::ofString($text, array(
                            Hoedown::RENDERS => array(
-                               'codespan' => function($text) {
+                               'codespan' => function($text, $attr) {
                                    return 'static-closure:'.$text;
                                }))), "\n";
 

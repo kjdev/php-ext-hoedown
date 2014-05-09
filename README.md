@@ -22,6 +22,7 @@ hoedown.ini:
 
 ```
 extension=hoedown.so
+; hoedown.options=tables,fenced-code,autolink,strikethrough,no-intra-emphasis
 ```
 
 ## Usage
@@ -33,15 +34,15 @@ echo $hoedown->parse('markdown text');
 
 ## Runtime Configuration
 
-Name                              | Default | Changeable
---------------------------------- | ------- | ----------
-hoedown.disable\_default\_options | 0       | PHP\_INI\_ALL
+Name            | Default                                                     | Changeable
+--------------- | ----------------------------------------------------------- | ----------
+hoedown.options | tables,fenced-code,autolink,strikethrough,no-intra-emphasis | PHP\_INI\_ALL
 
 
-* hoedown.disable\_default\_options
+* hoedown.options
 
-  It does not set the valid options for default of Hoedown class if you have to
-  On.
+  Set the options for default of Hoedown class.
+  (set in the constructor before calling)
 
   * Hoedown::TABLES
   * Hoedown::FENCED\_CODE
@@ -57,6 +58,8 @@ Hoedown {
   public mixed getOption(int $option)
   public bool setOption(int $option, mixed $value)
   public void setOptions(array $options = [])
+  public bool addRender(string $name, callable $callback)
+  public array getRenders(void)
   public string parse(string $string, mixed &$state = NULL)
   public string parseString(string $string, mixed &$state = NULL)
   public string parseFile(string $filename, mixed &$state = NULL)
@@ -82,6 +85,7 @@ Hoedown::USE\_XHTML              | bool   | FALSE   | Render XHTML
 Hoedown::ESCAPE                  | bool   | FALSE   | Escaple all HTML
 Hoedown::TASK\_LIST              | bool   | FALSE   | Render task lists
 Hoedown::LINE\_CONTINUE          | bool   | FALSE   | Render line continue
+Hoedown::HEADER\_ID              | bool   | FALSE   | Render header id
 Hoedown::TABLES                  | bool   | TRUE    | Parse PHP-Markdown style tables
 Hoedown::FENCED\_CODE            | bool   | TRUE    | Parse fenced code blocks
 Hoedown::FOOTNOTES               | bool   | FALSE   | Parse footnotes
@@ -100,9 +104,6 @@ Hoedown::TOC\_END                | int    | 6       | End level for headers incl
 Hoedown::TOC\_ESCAPE             | bool   | TRUE    | Escape int the TOC
 Hoedown::TOC\_HEADER             | string | ""      | Render header in the TOC
 Hoedown::TOC\_FOOTER             | string | ""      | Render footer in the TOC
-Hoedown::CLASS\_LIST             | string | ""      | Render class attribute in the list
-Hoedown::CLASS\_ORDER\_LIST      | string | ""      | Render class attribute in the ordered list
-Hoedown::CLASS\_TASK\_LIST       | string | ""      | Render class attribute in the task list
 
 ### Methods
 
@@ -346,6 +347,10 @@ Returns TRUE on success or FALSE on failure.
 
 ### Hoedown::getRenders
 
+```php
+public array getRenders(void)
+```
+
 retrieve renderer function.
 
 **Return Values:**
@@ -439,20 +444,20 @@ The above example will output:
 ```php
 $hoedown = new Hoedown;
 
-$hoedown->addRender('blockcode', function($text, $lang) {
+$hoedown->addRender('blockcode', function($text, $lang, $attr) {
         // Use Pygmentize
         return Pygmentize::highlight($text, $lang);
     });
 
 // or
-// function blockCode($text, $lang) {
+// function blockCode($text, $lang, $attr) {
 //     return Pygmentize::highlight($text, $lang);
 // }
 // $hoedown->addRender('blockcode', 'blockCode');
 
 // or
 // $hoedown->setOption(Hoedown::RENDERS, [
-//                         'blockcode' => function($text, $lang) {
+//                         'blockcode' => function($text, $lang, $attr) {
 //                             return Pygmentize::highlight($text, $lang);
 //                         }]);
 
@@ -461,13 +466,13 @@ echo $hoedown->parse("...markdown string...");
 
 Render functions:
 
-* blockcode($text, $lang)
+* blockcode($text, $lang, $attr)
 * blockquote($text)
 * blockhtml($text)
 * paragraph($text)
 * header($text, $attr, $level)
 * hrule()
-* list($text, $flags)
+* list($text, $attr, $flags)
 * listitem($text, $attr, $flags)
 * table($header, $body, $attr)
 * tablerow($text)
@@ -475,7 +480,7 @@ Render functions:
 * footnotes($text)
 * footnotedef($text, $num)
 * footnoteref($num)
-* codespan($text)
+* codespan($text, $attr)
 * underline($text)
 * highlight($text)
 * quote($text)
@@ -491,3 +496,41 @@ Render functions:
 * rawhtmltag($tag)
 * entity($entity)
 * normaltext($text)
+* userblock($text)
+
+## User block
+
+simple php code.
+
+```php
+$hoedown = new Hoedown;
+
+$hoedown->setOption(Hoedown::IS_USER, function($text) {
+        // Returns the value of user block length
+        if (preg_match('/^<\?php.*\?>/i', $text, $matches)) {
+            return strlen($matches[0]);
+        }
+        return 0;
+    });
+
+echo $hoedown->parse("<?php echo 'test'; ?>"), PHP_EOL;
+
+$hoedown->setOption(Hoedown::RENDERS, ['userblock' => function($text) {
+            ob_start();
+            eval(substr($text, 5, -2));
+            $retval = ob_get_contents();
+            ob_end_clean();
+            return $retval;
+        }]);
+
+echo $hoedown->parse("<?php echo 'test'; ?>"), PHP_EOL;
+```
+
+output:
+
+```
+<?php echo "test"; ?>
+test
+```
+
+

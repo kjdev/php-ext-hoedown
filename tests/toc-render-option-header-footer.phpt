@@ -83,27 +83,27 @@ echo $hoedown1->parse($text);
 == default renderer and state ==
 NULL
 NULL
-<h1 id="toc_a">a</h1>
+<h1 id="a">a</h1>
 
 <p>hoge</p>
 
-<h2 id="toc_b">b</h2>
+<h2 id="b">b</h2>
 
 <p>foo</p>
 
-<h3 id="toc_-code-code--code-"><code>code</code></h3>
+<h3 id="codecodecode"><code>code</code></h3>
 
 <p>huge</p>
 : toc
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>
@@ -115,13 +115,13 @@ NULL
 NULL
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>
@@ -131,28 +131,28 @@ NULL
 == enable header and footer: default renderer and state ==
 string(16) "== toc header =="
 string(16) "== toc footer =="
-<h1 id="toc_a">a</h1>
+<h1 id="a">a</h1>
 
 <p>hoge</p>
 
-<h2 id="toc_b">b</h2>
+<h2 id="b">b</h2>
 
 <p>foo</p>
 
-<h3 id="toc_-code-code--code-"><code>code</code></h3>
+<h3 id="codecodecode"><code>code</code></h3>
 
 <p>huge</p>
 : toc
 == toc header ==
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>
@@ -166,13 +166,13 @@ string(16) "== toc footer =="
 == toc header ==
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>
@@ -183,27 +183,27 @@ string(16) "== toc footer =="
 == empty header and footer: default renderer and state ==
 NULL
 NULL
-<h1 id="toc_a">a</h1>
+<h1 id="a">a</h1>
 
 <p>hoge</p>
 
-<h2 id="toc_b">b</h2>
+<h2 id="b">b</h2>
 
 <p>foo</p>
 
-<h3 id="toc_-code-code--code-"><code>code</code></h3>
+<h3 id="codecodecode"><code>code</code></h3>
 
 <p>huge</p>
 : toc
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>
@@ -214,13 +214,13 @@ NULL
 <div>HEADER</div>
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 <ul>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 <ul>
 <li>
-<a href="#toc_-code-code--code-">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
 </li>
 </ul>
 </li>

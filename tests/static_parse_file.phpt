@@ -104,7 +104,7 @@ echo Hoedown::ofFile('');
 
 <p>hoge_fuga_foo</p>
 == ofFile : with Hoedown::TOC ==
-<h1 id="toc_table">table</h1>
+<h1 id="table">table</h1>
 
 <table><thead>
 <tr>
@@ -122,38 +122,38 @@ echo Hoedown::ofFile('');
 </tr>
 </tbody></table>
 
-<h2 id="toc_fenced-code">fenced code</h2>
+<h2 id="fenced-code">fenced code</h2>
 
 <pre><code class="language-php">echo &quot;hello world&quot;;
 </code></pre>
 
-<h3 id="toc_autolink">autolink</h3>
+<h3 id="autolink">autolink</h3>
 
 <p><a href="http://www.php.net/">http://www.php.net/</a></p>
 
-<h4 id="toc_strikethrough">strikethrough</h4>
+<h4 id="strikethrough">strikethrough</h4>
 
 <p>this is <del>good</del> bad.</p>
 
-<h5 id="toc_no-intra-emphasis">no intra emphasis</h5>
+<h5 id="no-intra-emphasis">no intra emphasis</h5>
 
 <p>hoge_fuga_foo</p>
 : toc
 <ul>
 <li>
-<a href="#toc_table">table</a>
+<a href="#table">table</a>
 <ul>
 <li>
-<a href="#toc_fenced-code">fenced code</a>
+<a href="#fenced-code">fenced code</a>
 <ul>
 <li>
-<a href="#toc_autolink">autolink</a>
+<a href="#autolink">autolink</a>
 <ul>
 <li>
-<a href="#toc_strikethrough">strikethrough</a>
+<a href="#strikethrough">strikethrough</a>
 <ul>
 <li>
-<a href="#toc_no-intra-emphasis">no intra emphasis</a>
+<a href="#no-intra-emphasis">no intra emphasis</a>
 </li>
 </ul>
 </li>
@@ -167,19 +167,19 @@ echo Hoedown::ofFile('');
 == ofFile : with Hoedown::TOC and Hoedown::RENDERER_TOC ==
 <ul>
 <li>
-<a href="#toc_table">table</a>
+<a href="#table">table</a>
 <ul>
 <li>
-<a href="#toc_fenced-code">fenced code</a>
+<a href="#fenced-code">fenced code</a>
 <ul>
 <li>
-<a href="#toc_autolink">autolink</a>
+<a href="#autolink">autolink</a>
 <ul>
 <li>
-<a href="#toc_strikethrough">strikethrough</a>
+<a href="#strikethrough">strikethrough</a>
 <ul>
 <li>
-<a href="#toc_no-intra-emphasis">no intra emphasis</a>
+<a href="#no-intra-emphasis">no intra emphasis</a>
 </li>
 </ul>
 </li>

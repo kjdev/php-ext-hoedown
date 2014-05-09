@@ -1,17 +1,17 @@
 --TEST--
-render of option Hoedown::TOC
+render order list of option Hoedown::SPECIAL_ATTRIBUTE
 --SKIPIF--
 --FILE--
 <?php
 $text = <<<EOT
-# a
-## b
-### c
+1. a
+2. b
+{@list .order}
 EOT;
 
 $hoedown = new Hoedown;
 
-$opt = Hoedown::TOC;
+$opt = Hoedown::SPECIAL_ATTRIBUTE;
 
 echo "== default ==\n";
 var_dump($hoedown->getOption($opt));
@@ -30,22 +30,21 @@ echo $hoedown->parse($text);
 --EXPECTF--
 == default ==
 bool(false)
-<h1>a</h1>
-
-<h2>b</h2>
-
-<h3>c</h3>
+<ol>
+<li>a</li>
+<li>b
+{@list .order}</li>
+</ol>
 == enable ==
 bool(true)
-<h1 id="a">a</h1>
-
-<h2 id="b">b</h2>
-
-<h3 id="c">c</h3>
+<ol class="order">
+<li>a</li>
+<li>b</li>
+</ol>
 == disable ==
 bool(false)
-<h1>a</h1>
-
-<h2>b</h2>
-
-<h3>c</h3>
+<ol>
+<li>a</li>
+<li>b
+{@list .order}</li>
+</ol>
