@@ -507,7 +507,7 @@ $hoedown = new Hoedown;
 
 $hoedown->setOption(Hoedown::IS_USER, function($text) {
         // Returns the value of user block length
-        if (preg_match('/^<\?php.*\?>/i', $text, $matches)) {
+        if (preg_match('/^<\?php.*\?>/is', $text, $matches)) {
             return strlen($matches[0]);
         }
         return 0;
