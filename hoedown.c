@@ -1644,7 +1644,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                 state->toc_data.footer = Z_STRVAL_P(options->toc.footer);
             }
 
-            if (php_hoedown_is_user_block(options->is_user)) {
+            if (php_hoedown_is_user_block(options->is_user TSRMLS_CC)) {
                 document = hoedown_document_new(
                     renderer, options->extension,
                     16, php_hoedown_renderer_is_user_block);
@@ -1710,7 +1710,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     state->opaque = (void *)options;
 
     /* init document */
-    if (php_hoedown_is_user_block(options->is_user)) {
+    if (php_hoedown_is_user_block(options->is_user TSRMLS_CC)) {
         document = hoedown_document_new(renderer, options->extension,
                                         16, php_hoedown_renderer_is_user_block);
     } else {
