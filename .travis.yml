@@ -8,6 +8,7 @@ env:
   - REPORT_EXIT_STATUS=1 NO_INTERACTION=1
 
 before_script:
+  - phpenv config-rm xdebug.ini
   - phpize && ./configure
   - make
 
