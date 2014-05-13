@@ -10,7 +10,6 @@ $text = <<<EOT
 EOT;
 
 $hoedown = new Hoedown;
-$hoedown->setOption(Hoedown::TOC, true);
 
 $opt = Hoedown::TOC_END;
 
@@ -35,30 +34,30 @@ echo $hoedown->parse($text);
 
 --EXPECTF--
 == default ==
-int(6)
-<h1 id="a">a</h1>
+int(0)
+<h1>a</h1>
 
-<h2 id="b">b</h2>
+<h2>b</h2>
 
-<h3 id="c">c</h3>
+<h3>c</h3>
 == enable: 1 ==
 int(1)
 <h1 id="a">a</h1>
 
-<h2 id="b">b</h2>
+<h2>b</h2>
 
-<h3 id="c">c</h3>
+<h3>c</h3>
 == enable: 2 ==
 int(2)
 <h1 id="a">a</h1>
 
 <h2 id="b">b</h2>
 
-<h3 id="c">c</h3>
+<h3>c</h3>
 == disable ==
 int(0)
-<h1 id="a">a</h1>
+<h1>a</h1>
 
-<h2 id="b">b</h2>
+<h2>b</h2>
 
-<h3 id="c">c</h3>
+<h3>c</h3>

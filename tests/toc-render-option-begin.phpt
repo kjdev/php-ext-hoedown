@@ -162,7 +162,7 @@ int(2)
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3><code>code</code></h3>
 
 <p>huge</p>
 : toc

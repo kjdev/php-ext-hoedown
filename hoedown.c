@@ -112,15 +112,11 @@ enum {
     HOEDOWN_OPT_RENDERER_TOC,
     HOEDOWN_OPT_HTML,
     HOEDOWN_OPT_HTML_SKIP_HTML = HOEDOWN_OPT_HTML,
-    HOEDOWN_OPT_HTML_SKIP_STYLE,
-    HOEDOWN_OPT_HTML_SKIP_IMAGES,
-    HOEDOWN_OPT_HTML_SKIP_LINKS,
+    HOEDOWN_OPT_HTML_ESCAPE,
     HOEDOWN_OPT_HTML_EXPAND_TABS,
     HOEDOWN_OPT_HTML_SAFELINK,
-    HOEDOWN_OPT_HTML_TOC,
     HOEDOWN_OPT_HTML_HARD_WRAP,
     HOEDOWN_OPT_HTML_USE_XHTML,
-    HOEDOWN_OPT_HTML_ESCAPE,
     HOEDOWN_OPT_HTML_TASK_LIST,
     HOEDOWN_OPT_HTML_LINE_CONTINUE,
     HOEDOWN_OPT_HTML_HEADER_ID,
@@ -141,6 +137,7 @@ enum {
     HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE,
     HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE,
     HOEDOWN_OPT_EXT_END,
+    HOEDOWN_OPT_TOC,
     HOEDOWN_OPT_TOC_BEGIN,
     HOEDOWN_OPT_TOC_END,
     HOEDOWN_OPT_TOC_ESCAPE,
@@ -190,6 +187,14 @@ php_hoedown_set_option(php_hoedown_options_t *options,
                 options->renderer = opt;
             } else {
                 options->renderer = HOEDOWN_OPT_RENDERER_HTML;
+            }
+            return 0;
+        case HOEDOWN_OPT_TOC:
+            convert_to_boolean(val);
+            if (Z_BVAL_P(val)) {
+                options->toc.end = HOEDOWN_DEFAULT_OPT_TOC_LEVEL;
+            } else {
+                options->toc.end = 0;
             }
             return 0;
         case HOEDOWN_OPT_TOC_BEGIN:
@@ -315,12 +320,8 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
     };
     php_hoedown_flag_t html_flags[] = {
         { HOEDOWN_HTML_SKIP_HTML, "skip-html" },
-        { HOEDOWN_HTML_SKIP_STYLE, "skip-style" },
-        { HOEDOWN_HTML_SKIP_IMAGES, "skip-images" },
-        { HOEDOWN_HTML_SKIP_LINKS, "skip-links" },
         /* { HOEDOWN_HTML_EXPAND_TABS, "expand-tabs" }, */
         { HOEDOWN_HTML_SAFELINK, "safelink" },
-        { HOEDOWN_HTML_TOC, "toc"},
         { HOEDOWN_HTML_HARD_WRAP, "hard-wrap" },
         { HOEDOWN_HTML_USE_XHTML, "xhtml" },
         { HOEDOWN_HTML_ESCAPE, "escape" },
@@ -364,7 +365,7 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
     memset(options, 0, sizeof(php_hoedown_options_t));
 
     options->renderer = HOEDOWN_OPT_RENDERER_HTML;
-    options->toc.end = HOEDOWN_DEFAULT_OPT_TOC_LEVEL;
+    options->toc.end = 0;
     options->extension = 0;
     options->html = 0;
 
@@ -468,6 +469,11 @@ HOEDOWN_METHOD(getOption)
         RETURN_FALSE;
     } else {
         switch (option) {
+            case HOEDOWN_OPT_TOC:
+                if (intern->options.toc.end > 0) {
+                    RETURN_TRUE;
+                }
+                RETURN_FALSE;
             case HOEDOWN_OPT_TOC_BEGIN:
                 RETURN_LONG(intern->options.toc.begin);
             case HOEDOWN_OPT_TOC_END:
@@ -1438,7 +1444,7 @@ php_hoedown_renderer_user_block(hoedown_buffer *ob,
     zval_ptr_dtor(&parameters);
 }
 
-static int
+static size_t
 php_hoedown_renderer_is_user_block(uint8_t *data, size_t size, void *opaque)
 {
     hoedown_html_renderer_state *state = opaque;
@@ -1626,7 +1632,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     }
 
     /* toc */
-    if (options->html & HOEDOWN_HTML_TOC) {
+    if (options->toc.end > 0) {
         toc_level = options->toc.end;
         if (return_state || options->renderer == HOEDOWN_OPT_RENDERER_TOC) {
             renderer = hoedown_html_toc_renderer_new(0);
@@ -2035,12 +2041,8 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(RENDERER_TOC, HOEDOWN_OPT_RENDERER_TOC);
 
     HOEDOWN_CONST_LONG(SKIP_HTML, HOEDOWN_OPT_HTML_SKIP_HTML);
-    HOEDOWN_CONST_LONG(SKIP_STYLE, HOEDOWN_OPT_HTML_SKIP_STYLE);
-    HOEDOWN_CONST_LONG(SKIP_IMAGES, HOEDOWN_OPT_HTML_SKIP_IMAGES);
-    HOEDOWN_CONST_LONG(SKIP_LINKS, HOEDOWN_OPT_HTML_SKIP_LINKS);
     HOEDOWN_CONST_LONG(EXPAND_TABS, HOEDOWN_OPT_HTML_EXPAND_TABS);
     HOEDOWN_CONST_LONG(SAFELINK, HOEDOWN_OPT_HTML_SAFELINK);
-    HOEDOWN_CONST_LONG(TOC, HOEDOWN_OPT_HTML_TOC);
     HOEDOWN_CONST_LONG(HARD_WRAP, HOEDOWN_OPT_HTML_HARD_WRAP);
     HOEDOWN_CONST_LONG(USE_XHTML, HOEDOWN_OPT_HTML_USE_XHTML);
     HOEDOWN_CONST_LONG(ESCAPE, HOEDOWN_OPT_HTML_ESCAPE);
@@ -2064,6 +2066,7 @@ ZEND_MINIT_FUNCTION(hoedown)
                        HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE);
     HOEDOWN_CONST_LONG(SPECIAL_ATTRIBUTE, HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE);
 
+    HOEDOWN_CONST_LONG(TOC, HOEDOWN_OPT_TOC);
     HOEDOWN_CONST_LONG(TOC_BEGIN, HOEDOWN_OPT_TOC_BEGIN);
     HOEDOWN_CONST_LONG(TOC_END, HOEDOWN_OPT_TOC_END);
     HOEDOWN_CONST_LONG(TOC_ESCAPE, HOEDOWN_OPT_TOC_ESCAPE);
