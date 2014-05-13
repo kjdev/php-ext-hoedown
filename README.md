@@ -75,11 +75,7 @@ Name                             | Type   | Default | Description
 Hoedown::RENDERER\_HTML          | bool   | TRUE    | Render HTML
 Hoedown::RENDERER\_TOC           | bool   | FALSE   | Render the Table of Contents in HTML
 Hoedown::SKIP\_HTML              | bool   | FALSE   | Strip all HTML tags
-Hoedown::SKIP\_STYLE             | bool   | FALSE   | Stripg \<style\> tags
-Hoedown::SKIP\_IMAGES            | bool   | FALSE   | Don't render images
-Hoedown::SKIP\_LINKS             | bool   | FALSE   | Don't render links
 Hoedown::SAFELINK                | bool   | FALSE   | Only allow links to safe protocols
-Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents
 Hoedown::HARD\_WRAP              | bool   | FALSE   | Render each linebreak as \<br\>
 Hoedown::USE\_XHTML              | bool   | FALSE   | Render XHTML
 Hoedown::ESCAPE                  | bool   | FALSE   | Escaple all HTML
@@ -99,6 +95,7 @@ Hoedown::NO\_INTRA\_EMPHASIS     | bool   | TRUE    | Disable emphasis\_between\
 Hoedown::SPACE\_HEADERS          | bool   | FALSE   | Requqire a space after '#' in headers
 Hoedown::DISABLE\_INDENTED\_CODE | bool   | FALSE   | Don't parse indented code blocks
 Hoedown::SPECIA\L\_ATTRIBUTE     | bool   | FALSE   | Parse special attributes
+Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents
 Hoedown::TOC\_BEGIN              | int    | 0       | Begin level for headers included in the TOC.
 Hoedown::TOC\_END                | int    | 6       | End level for headers included in the TOC.
 Hoedown::TOC\_ESCAPE             | bool   | TRUE    | Escape int the TOC
@@ -391,21 +388,21 @@ echo $state['toc'];
 The above example will output:
 
 ```
-<h1 id="toc_header">header</h1>
+<h1 id="header">header</h1>
 
-<h2 id="toc_a">a</h2>
+<h2 id="a">a</h2>
 
-<h2 id="toc_b">b</h2>
+<h2 id="b">b</h2>
 -- Table of Contents --
 <ul>
 <li>
-<a href="#toc_header">header</a>
+<a href="#header">header</a>
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 </li>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 </li>
 </ul>
 </li>
@@ -426,13 +423,13 @@ The above example will output:
 ```
 <ul>
 <li>
-<a href="#toc_header">header</a>
+<a href="#header">header</a>
 <ul>
 <li>
-<a href="#toc_a">a</a>
+<a href="#a">a</a>
 </li>
 <li>
-<a href="#toc_b">b</a>
+<a href="#b">b</a>
 </li>
 </ul>
 </li>
