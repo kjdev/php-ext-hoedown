@@ -1984,6 +1984,9 @@ php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
 {
     php_hoedown_t *intern;
     zend_object_value retval;
+#if ZEND_MODULE_API_NO < 20100525
+    zval *tmp;
+#endif
 
     intern = (php_hoedown_t *)emalloc(sizeof(php_hoedown_t));
     memset(intern, 0, sizeof(php_hoedown_t));
@@ -1992,7 +1995,12 @@ php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
     }
 
     zend_object_std_init(&intern->std, ce TSRMLS_CC);
+#if ZEND_MODULE_API_NO >= 20100525
     object_properties_init(&intern->std, ce);
+#else
+    zend_hash_copy(intern->std.properties, &ce->default_properties,
+                   (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *));
+#endif
 
     retval.handle = zend_objects_store_put(
         intern, (zend_objects_store_dtor_t)zend_objects_destroy_object,
