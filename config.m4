@@ -18,11 +18,11 @@ else
 fi
 
 if test $PHP_MAJOR_VERSION -lt 5; then
-   AC_MSG_ERROR([need at least PHP 5.4 or newer])
+   AC_MSG_ERROR([need at least PHP 5.3 or newer])
 fi
 
-if test $PHP_MAJOR_VERSION -eq 5 -a $PHP_MINOR_VERSION -lt 4; then
-    AC_MSG_ERROR([need at least PHP 5.4 or newer])
+if test $PHP_MAJOR_VERSION -eq 5 -a $PHP_MINOR_VERSION -lt 3; then
+    AC_MSG_ERROR([need at least PHP 5.3 or newer])
 fi
 
 dnl Hoedown Extension
