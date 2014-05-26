@@ -1,0 +1,9 @@
+// $Id$
+// vim:ft=javascript
+
+ARG_ENABLE("hoedown", "for hoedown support", "yes");
+
+if (PHP_HOEDOWN != "no") {
+   EXTENSION("hoedown", "hoedown.c", PHP_HOEDOWN_SHARED, "");
+   ADD_SOURCES(configure_module_dirname + "/hoedown/src", "autolink.c escape.c html_smartypants.c buffer.c html.c stack.c document.c html_blocks.c hash.c version.c", "hoedown");
+}
