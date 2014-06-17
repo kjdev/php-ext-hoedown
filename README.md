@@ -88,35 +88,35 @@ Hoedown {
 
 Name                             | Type   | Default | Description
 -------------------------------- | -----  | ------- | -----------
-Hoedown::RENDERER\_HTML          | bool   | TRUE    | Render HTML
-Hoedown::RENDERER\_TOC           | bool   | FALSE   | Render the Table of Contents in HTML
-Hoedown::SKIP\_HTML              | bool   | FALSE   | Strip all HTML tags
-Hoedown::SAFELINK                | bool   | FALSE   | Only allow links to safe protocols
-Hoedown::HARD\_WRAP              | bool   | FALSE   | Render each linebreak as \<br\>
-Hoedown::USE\_XHTML              | bool   | FALSE   | Render XHTML
-Hoedown::ESCAPE                  | bool   | FALSE   | Escaple all HTML
-Hoedown::TASK\_LIST              | bool   | FALSE   | Render task lists
-Hoedown::LINE\_CONTINUE          | bool   | FALSE   | Render line continue
-Hoedown::HEADER\_ID              | bool   | FALSE   | Render header id
-Hoedown::TABLES                  | bool   | TRUE    | Parse PHP-Markdown style tables
-Hoedown::FENCED\_CODE            | bool   | TRUE    | Parse fenced code blocks
-Hoedown::FOOTNOTES               | bool   | FALSE   | Parse footnotes
-Hoedown::AUTOLINK                | bool   | TRUE    | Automatically turn URLs into links
-Hoedown::STRIKETHROUGH           | bool   | TRUE    | Parse `~~strikethrough~~` spans
-Hoedown::UNDERLINE               | bool   | FALSE   | Parse `_underline_` instead of emphasis
-Hoedown::HIGHLIGHT               | bool   | FALSE   | Parse `==hightlight==` spans
-Hoedown::QUOTE                   | bool   | FALSE   | Render "quotes" as \<q\>
-Hoedown::SUPERSCRIPT             | bool   | FALSE   | Parse super\^script
-Hoedown::NO\_INTRA\_EMPHASIS     | bool   | TRUE    | Disable emphasis\_between\_words
-Hoedown::SPACE\_HEADERS          | bool   | FALSE   | Requqire a space after '#' in headers
-Hoedown::DISABLE\_INDENTED\_CODE | bool   | FALSE   | Don't parse indented code blocks
-Hoedown::SPECIA\L\_ATTRIBUTE     | bool   | FALSE   | Parse special attributes
-Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents
+Hoedown::RENDERER\_HTML          | bool   | TRUE    | Render HTML.
+Hoedown::RENDERER\_TOC           | bool   | FALSE   | Render the Table of Contents in HTML.
+Hoedown::SKIP\_HTML              | bool   | FALSE   | Strip all HTML tags.
+Hoedown::SAFELINK                | bool   | FALSE   | Only allow links to safe protocols.
+Hoedown::HARD\_WRAP              | bool   | FALSE   | Render each linebreak as \<br\>.
+Hoedown::USE\_XHTML              | bool   | FALSE   | Render XHTML.
+Hoedown::ESCAPE                  | bool   | FALSE   | Escaple all HTML.
+Hoedown::TASK\_LIST              | bool   | FALSE   | Render task lists.
+Hoedown::LINE\_CONTINUE          | bool   | FALSE   | Render line continue.
+Hoedown::HEADER\_ID              | bool   | FALSE   | Render header id.
+Hoedown::TABLES                  | bool   | TRUE    | Parse PHP-Markdown style tables.
+Hoedown::FENCED\_CODE            | bool   | TRUE    | Parse fenced code blocks.
+Hoedown::FOOTNOTES               | bool   | FALSE   | Parse footnotes.
+Hoedown::AUTOLINK                | bool   | TRUE    | Automatically turn URLs into links.
+Hoedown::STRIKETHROUGH           | bool   | TRUE    | Parse `~~strikethrough~~` spans.
+Hoedown::UNDERLINE               | bool   | FALSE   | Parse `_underline_` instead of emphasis.
+Hoedown::HIGHLIGHT               | bool   | FALSE   | Parse `==hightlight==` spans.
+Hoedown::QUOTE                   | bool   | FALSE   | Render "quotes" as \<q\>.
+Hoedown::SUPERSCRIPT             | bool   | FALSE   | Parse super\^script.
+Hoedown::NO\_INTRA\_EMPHASIS     | bool   | TRUE    | Disable emphasis\_between\_words.
+Hoedown::SPACE\_HEADERS          | bool   | FALSE   | Requqire a space after '#' in headers.
+Hoedown::DISABLE\_INDENTED\_CODE | bool   | FALSE   | Don't parse indented code blocks.
+Hoedown::SPECIAL\_ATTRIBUTE      | bool   | FALSE   | Parse special attributes.
+Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents.
 Hoedown::TOC\_BEGIN              | int    | 0       | Begin level for headers included in the TOC.
 Hoedown::TOC\_END                | int    | 6       | End level for headers included in the TOC.
-Hoedown::TOC\_ESCAPE             | bool   | TRUE    | Escape int the TOC
-Hoedown::TOC\_HEADER             | string | ""      | Render header in the TOC
-Hoedown::TOC\_FOOTER             | string | ""      | Render footer in the TOC
+Hoedown::TOC\_ESCAPE             | bool   | TRUE    | Escape int the TOC.
+Hoedown::TOC\_HEADER             | string | ""      | Render header in the TOC.
+Hoedown::TOC\_FOOTER             | string | ""      | Render footer in the TOC.
 
 ### Methods
 
