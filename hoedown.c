@@ -157,19 +157,21 @@ php_hoedown_set_option(php_hoedown_options_t *options,
                        int opt, zval *val TSRMLS_DC)
 {
     if (opt >= HOEDOWN_OPT_HTML && opt < HOEDOWN_OPT_HTML_END) {
+        int n = (1 << (opt - HOEDOWN_OPT_HTML));
         convert_to_boolean(val);
         if (Z_BVAL_P(val)) {
-            options->html |= (1 << (opt - HOEDOWN_OPT_HTML));
-        } else {
-            options->html ^= (1 << (opt - HOEDOWN_OPT_HTML));
+            options->html |= n;
+        } else if (options->html & n) {
+            options->html ^= n;
         }
         return 0;
     } else if (opt >= HOEDOWN_OPT_EXT && opt < HOEDOWN_OPT_EXT_END) {
+        int n = (1 << (opt - HOEDOWN_OPT_EXT));
         convert_to_boolean(val);
         if (Z_BVAL_P(val)) {
-            options->extension |= (1 << (opt - HOEDOWN_OPT_EXT));
-        } else {
-            options->extension ^= (1 << (opt - HOEDOWN_OPT_EXT));
+            options->extension |= n;
+        } else if (options->extension & n) {
+            options->extension ^= n;
         }
         return 0;
     }
