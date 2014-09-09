@@ -134,6 +134,8 @@ enum {
     HOEDOWN_OPT_EXT_NO_INTRA_EMPHASIS,
     HOEDOWN_OPT_EXT_SPACE_HEADERS,
     HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE,
+    HOEDOWN_OPT_EXT_MATH,
+    HOEDOWN_OPT_EXT_MATH_EXPLICIT,
     HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE,
     HOEDOWN_OPT_EXT_END,
     HOEDOWN_OPT_TOC,
@@ -314,8 +316,10 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         { HOEDOWN_EXT_HIGHLIGHT, "highlight" },
         { HOEDOWN_EXT_QUOTE, "quote" },
         { HOEDOWN_EXT_SUPERSCRIPT, "superscript" },
+        { HOEDOWN_EXT_MATH, "math" },
         /* { HOEDOWN_EXT_LAX_SPACING, "lax-spacing" }, */
         { HOEDOWN_EXT_SPACE_HEADERS, "space-headers" },
+        { HOEDOWN_EXT_MATH_EXPLICIT, "math-explicit" },
         { HOEDOWN_EXT_DISABLE_INDENTED_CODE, "disable-indented-code" },
         { HOEDOWN_EXT_SPECIAL_ATTRIBUTE, "special-attribute" },
     };
@@ -1395,6 +1399,35 @@ php_hoedown_renderer_entity(hoedown_buffer *ob,
     zval_ptr_dtor(&parameters);
 }
 
+static int
+php_hoedown_renderer_math(hoedown_buffer *ob,
+                          const hoedown_buffer *text, int displaymode,
+                          void *opaque)
+{
+    zval *definition, *parameters;
+    TSRMLS_FETCH();
+
+    definition = php_hoedown_is_renderer("math", opaque TSRMLS_CC);
+    if (!definition) {
+        return 0;
+    }
+
+    MAKE_STD_ZVAL(parameters);
+    array_init_size(parameters, 2);
+    if (text) {
+        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+    } else {
+        add_next_index_stringl(parameters, "", 0, 1);
+    }
+    add_next_index_long(parameters, displaymode);
+
+    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+
+    zval_ptr_dtor(&parameters);
+
+    return 1;
+}
+
 static void
 php_hoedown_renderer_normal_text(hoedown_buffer *ob,
                                  const hoedown_buffer *text, void *opaque)
@@ -1577,6 +1610,8 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
         renderer->superscript = php_hoedown_renderer_superscript;
     } else if (strcmp(name, "footnoteref") == 0) {
         renderer->footnote_ref = php_hoedown_renderer_footnote_ref;
+    } else if (strcmp(name, "math") == 0) {
+        renderer->math = php_hoedown_renderer_math;
     } else if (strcmp(name, "entity") == 0) {
         renderer->entity = php_hoedown_renderer_entity;
     } else if (strcmp(name, "normaltext") == 0) {
@@ -2067,9 +2102,11 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(HIGHLIGHT, HOEDOWN_OPT_EXT_HIGHLIGHT);
     HOEDOWN_CONST_LONG(QUOTE, HOEDOWN_OPT_EXT_QUOTE);
     HOEDOWN_CONST_LONG(SUPERSCRIPT, HOEDOWN_OPT_EXT_SUPERSCRIPT);
+    HOEDOWN_CONST_LONG(MATH, HOEDOWN_OPT_EXT_MATH);
     HOEDOWN_CONST_LONG(LAX_SPACING, HOEDOWN_OPT_EXT_LAX_SPACING);
     HOEDOWN_CONST_LONG(NO_INTRA_EMPHASIS, HOEDOWN_OPT_EXT_NO_INTRA_EMPHASIS);
     HOEDOWN_CONST_LONG(SPACE_HEADERS, HOEDOWN_OPT_EXT_SPACE_HEADERS);
+    HOEDOWN_CONST_LONG(MATH_EXPLICIT, HOEDOWN_OPT_EXT_MATH_EXPLICIT);
     HOEDOWN_CONST_LONG(DISABLE_INDENTED_CODE,
                        HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE);
     HOEDOWN_CONST_LONG(SPECIAL_ATTRIBUTE, HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE);
