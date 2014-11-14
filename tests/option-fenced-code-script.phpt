@@ -1,16 +1,17 @@
 --TEST--
-render of option Hoedown::SAFELINK
+render of option Hoedown::FENCED_CODE_SCRIPT
 --SKIPIF--
 --FILE--
 <?php
 $text = <<<EOT
-[web](http://www.php.net)
-[file](file:///local.file)
+``` script@text/javascript
+alert("Example");
+```
 EOT;
 
 $hoedown = new Hoedown;
 
-$opt = Hoedown::SAFELINK;
+$opt = Hoedown::FENCED_CODE_SCRIPT;
 
 echo "== default ==\n";
 var_dump($hoedown->getOption($opt));
@@ -29,13 +30,14 @@ echo $hoedown->parse($text);
 --EXPECTF--
 == default ==
 bool(false)
-<p><a href="http://www.php.net">web</a>
-<a href="file:///local.file">file</a></p>
+<pre><code class="language-script@text/javascript">alert(&quot;Example&quot;);
+</code></pre>
 == enable ==
 bool(true)
-<p><a href="http://www.php.net">web</a>
-[file](file:///local.file)</p>
+<script type="text/javascript">
+alert("Example");
+</script>
 == disable ==
 bool(false)
-<p><a href="http://www.php.net">web</a>
-<a href="file:///local.file">file</a></p>
+<pre><code class="language-script@text/javascript">alert(&quot;Example&quot;);
+</code></pre>

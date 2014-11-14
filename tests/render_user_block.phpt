@@ -9,7 +9,7 @@ EOT;
 
 $hoedown = new Hoedown;
 
-$hoedown->setOption(Hoedown::IS_USER, function($text) {
+$hoedown->setOption(Hoedown::USER_BLOCK, function($text) {
         if (preg_match('/^{{.*}}/', $text, $matches)) {
             return strlen($matches[0]);
         }
@@ -35,7 +35,7 @@ echo $hoedown->parse($text), "\n";
 echo "== static closure: userblock ==\n";
 echo Hoedown::ofString(
     $text, array(
-        Hoedown::IS_USER => function($text) {
+        Hoedown::USER_BLOCK => function($text) {
             if (preg_match('/^{{.*}}/', $text, $matches)) {
                 return strlen($matches[0]);
             }
@@ -50,7 +50,7 @@ echo Hoedown::ofString(
 echo "== static function: userblock ==\n";
 echo Hoedown::ofString(
     $text, array(
-        Hoedown::IS_USER => function($text) {
+        Hoedown::USER_BLOCK => function($text) {
             if (preg_match('/^{{.*}}/', $text, $matches)) {
                 return strlen($matches[0]);
             }

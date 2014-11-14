@@ -33,7 +33,7 @@ typedef struct {
         zval *footer;
     } toc;
     zval *renders;
-    zval *is_user;
+    zval *user_block;
 } php_hoedown_options_t;
 
 typedef struct {
@@ -113,12 +113,12 @@ enum {
     HOEDOWN_OPT_HTML,
     HOEDOWN_OPT_HTML_SKIP_HTML = HOEDOWN_OPT_HTML,
     HOEDOWN_OPT_HTML_ESCAPE,
-    HOEDOWN_OPT_HTML_SAFELINK,
     HOEDOWN_OPT_HTML_HARD_WRAP,
     HOEDOWN_OPT_HTML_USE_XHTML,
-    HOEDOWN_OPT_HTML_TASK_LIST,
+    HOEDOWN_OPT_HTML_USE_TASK_LIST,
     HOEDOWN_OPT_HTML_LINE_CONTINUE,
     HOEDOWN_OPT_HTML_HEADER_ID,
+    HOEDOWN_OPT_HTML_FENCED_CODE_SCRIPT,
     HOEDOWN_OPT_HTML_END,
     HOEDOWN_OPT_EXT,
     HOEDOWN_OPT_EXT_TABLES = HOEDOWN_OPT_EXT,
@@ -130,13 +130,14 @@ enum {
     HOEDOWN_OPT_EXT_HIGHLIGHT,
     HOEDOWN_OPT_EXT_QUOTE,
     HOEDOWN_OPT_EXT_SUPERSCRIPT,
-    HOEDOWN_OPT_EXT_LAX_SPACING,
+    HOEDOWN_OPT_EXT_MATH,
+    HOEDONE_OPT_EXT__DUMMY,
     HOEDOWN_OPT_EXT_NO_INTRA_EMPHASIS,
     HOEDOWN_OPT_EXT_SPACE_HEADERS,
-    HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE,
-    HOEDOWN_OPT_EXT_MATH,
     HOEDOWN_OPT_EXT_MATH_EXPLICIT,
+    HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE,
     HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE,
+    HOEDOWN_OPT_EXT_SCRIPT_TAGS,
     HOEDOWN_OPT_EXT_END,
     HOEDOWN_OPT_TOC,
     HOEDOWN_OPT_TOC_BEGIN,
@@ -145,7 +146,7 @@ enum {
     HOEDOWN_OPT_TOC_HEADER,
     HOEDOWN_OPT_TOC_FOOTER,
     HOEDOWN_OPT_RENDERS,
-    HOEDOWN_OPT_IS_USER_BLOCK,
+    HOEDOWN_OPT_USER_BLOCK,
 };
 
 #define HOEDOWN_DEFAULT_OPT_TOC_LEVEL 6
@@ -162,6 +163,9 @@ php_hoedown_set_option(php_hoedown_options_t *options,
         convert_to_boolean(val);
         if (Z_BVAL_P(val)) {
             options->html |= n;
+            if (opt == HOEDOWN_OPT_HTML_FENCED_CODE_SCRIPT) {
+                options->extension |= HOEDOWN_OPT_EXT_FENCED_CODE;
+            }
         } else if (options->html & n) {
             options->html ^= n;
         }
@@ -255,17 +259,17 @@ php_hoedown_set_option(php_hoedown_options_t *options,
                 return 0;
             }
             break;
-        case HOEDOWN_OPT_IS_USER_BLOCK:
+        case HOEDOWN_OPT_USER_BLOCK:
             if (Z_TYPE_P(val) == IS_NULL) {
-                if (options->is_user) {
-                    zval_ptr_dtor(&options->is_user);
-                    options->is_user = NULL;
+                if (options->user_block) {
+                    zval_ptr_dtor(&options->user_block);
+                    options->user_block = NULL;
                 }
             } else {
-                if (!options->is_user) {
-                    MAKE_STD_ZVAL(options->is_user);
+                if (!options->user_block) {
+                    MAKE_STD_ZVAL(options->user_block);
                 }
-                ZVAL_ZVAL(options->is_user, val, 1, 0);
+                ZVAL_ZVAL(options->user_block, val, 1, 0);
             }
             return 0;
         default:
@@ -317,22 +321,21 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         { HOEDOWN_EXT_QUOTE, "quote" },
         { HOEDOWN_EXT_SUPERSCRIPT, "superscript" },
         { HOEDOWN_EXT_MATH, "math" },
-        /* { HOEDOWN_EXT_LAX_SPACING, "lax-spacing" }, */
         { HOEDOWN_EXT_SPACE_HEADERS, "space-headers" },
         { HOEDOWN_EXT_MATH_EXPLICIT, "math-explicit" },
         { HOEDOWN_EXT_DISABLE_INDENTED_CODE, "disable-indented-code" },
         { HOEDOWN_EXT_SPECIAL_ATTRIBUTE, "special-attribute" },
+        { HOEDOWN_EXT_SCRIPT_TAGS, "script-tags" },
     };
     php_hoedown_flag_t html_flags[] = {
         { HOEDOWN_HTML_SKIP_HTML, "skip-html" },
-        /* { HOEDOWN_HTML_EXPAND_TABS, "expand-tabs" }, */
-        { HOEDOWN_HTML_SAFELINK, "safelink" },
         { HOEDOWN_HTML_HARD_WRAP, "hard-wrap" },
         { HOEDOWN_HTML_USE_XHTML, "xhtml" },
         { HOEDOWN_HTML_ESCAPE, "escape" },
         { HOEDOWN_HTML_USE_TASK_LIST, "task" },
         { HOEDOWN_HTML_LINE_CONTINUE, "line-continue" },
         { HOEDOWN_HTML_HEADER_ID, "header-id" },
+        { HOEDOWN_HTML_FENCED_CODE_SCRIPT, "fenced-code-script" },
     };
     php_hoedown_flag_t *flag;
     int n, i = 0;
@@ -356,6 +359,9 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         flag = html_flags + i;
         if (strncasecmp(name, flag->name, size) == 0) {
             options->html |= flag->option;
+            if (flag->option == HOEDOWN_HTML_FENCED_CODE_SCRIPT) {
+                options->extension |= HOEDOWN_EXT_FENCED_CODE;
+            }
             return;
         }
         ++i;
@@ -408,8 +414,8 @@ php_hoedown_options_destroy(php_hoedown_options_t *options TSRMLS_DC)
     if (options->renders) {
         zval_ptr_dtor(&options->renders);
     }
-    if (options->is_user) {
-        zval_ptr_dtor(&options->is_user);
+    if (options->user_block) {
+        zval_ptr_dtor(&options->user_block);
     }
 }
 
@@ -521,9 +527,9 @@ HOEDOWN_METHOD(setOptions)
 }
 
 static zval *
-php_hoedown_is_renderer(char *name, void *opaque TSRMLS_DC)
+php_hoedown_is_renderer(char *name, const hoedown_renderer_data *data TSRMLS_DC)
 {
-    hoedown_html_renderer_state *state = opaque;
+    hoedown_html_renderer_state *state = data->opaque;
     zval *renders = NULL;
     zval **definition = NULL;
 
@@ -569,14 +575,16 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
 }
 
 static void
-php_hoedown_renderer_blockcode(hoedown_buffer *ob, const hoedown_buffer *text,
+php_hoedown_renderer_blockcode(hoedown_buffer *ob,
+                               const hoedown_buffer *text,
                                const hoedown_buffer *lang,
-                               const hoedown_buffer *attr, void *opaque)
+                               const hoedown_buffer *attr,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("blockcode", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("blockcode", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -606,12 +614,13 @@ php_hoedown_renderer_blockcode(hoedown_buffer *ob, const hoedown_buffer *text,
 
 static void
 php_hoedown_renderer_blockquote(hoedown_buffer *ob,
-                                const hoedown_buffer *text, void *opaque)
+                                const hoedown_buffer *text,
+                                const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("blockquote", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("blockquote", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -631,12 +640,13 @@ php_hoedown_renderer_blockquote(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_blockhtml(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("blockhtml", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("blockhtml", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -655,13 +665,16 @@ php_hoedown_renderer_blockhtml(hoedown_buffer *ob,
 }
 
 static void
-php_hoedown_renderer_header(hoedown_buffer *ob, const hoedown_buffer *text,
-                            const hoedown_buffer *attr, int level, void *opaque)
+php_hoedown_renderer_header(hoedown_buffer *ob,
+                            const hoedown_buffer *text,
+                            const hoedown_buffer *attr,
+                            int level,
+                            const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("header", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("header", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -686,12 +699,12 @@ php_hoedown_renderer_header(hoedown_buffer *ob, const hoedown_buffer *text,
 }
 
 static void
-php_hoedown_renderer_hrule(hoedown_buffer *ob, void *opaque)
+php_hoedown_renderer_hrule(hoedown_buffer *ob, const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("hrule", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("hrule", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -705,14 +718,16 @@ php_hoedown_renderer_hrule(hoedown_buffer *ob, void *opaque)
 }
 
 static void
-php_hoedown_renderer_list(hoedown_buffer *ob, const hoedown_buffer *text,
-                          const hoedown_buffer *attr, unsigned int flags,
-                          void *opaque)
+php_hoedown_renderer_list(hoedown_buffer *ob,
+                          const hoedown_buffer *text,
+                          const hoedown_buffer *attr,
+                          unsigned int flags,
+                          const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("list", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("list", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -740,12 +755,13 @@ static void
 php_hoedown_renderer_listitem(hoedown_buffer *ob,
                               const hoedown_buffer *text,
                               const hoedown_buffer *attr,
-                              unsigned int *flags, void *opaque)
+                              unsigned int *flags,
+                              const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("listitem", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("listitem", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -771,12 +787,13 @@ php_hoedown_renderer_listitem(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_paragraph(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("paragraph", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("paragraph", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -796,28 +813,23 @@ php_hoedown_renderer_paragraph(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_table(hoedown_buffer *ob,
-                           const hoedown_buffer *header,
-                           const hoedown_buffer *body,
-                           const hoedown_buffer *attr, void *opaque)
+                           const hoedown_buffer *content,
+                           const hoedown_buffer *attr,
+                           const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("table", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("table", data TSRMLS_CC);
     if (!definition) {
         return;
     }
 
     MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 3);
-    if (header) {
+    array_init_size(parameters, 2);
+    if (content) {
         add_next_index_stringl(parameters,
-                               (char *)header->data, header->size, 1);
-    } else {
-        add_next_index_stringl(parameters, "", 0, 1);
-    }
-    if (body) {
-        add_next_index_stringl(parameters, (char *)body->data, body->size, 1);
+                               (char *)content->data, content->size, 1);
     } else {
         add_next_index_stringl(parameters, "", 0, 1);
     }
@@ -833,13 +845,14 @@ php_hoedown_renderer_table(hoedown_buffer *ob,
 }
 
 static void
-php_hoedown_renderer_table_row(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+php_hoedown_renderer_table_header(hoedown_buffer *ob,
+                                  const hoedown_buffer *text,
+                                  const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("tablerow", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("tableheader", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -858,13 +871,67 @@ php_hoedown_renderer_table_row(hoedown_buffer *ob,
 }
 
 static void
-php_hoedown_renderer_table_cell(hoedown_buffer *ob, const hoedown_buffer *text,
-                                unsigned int flags, void *opaque)
+php_hoedown_renderer_table_body(hoedown_buffer *ob,
+                                const hoedown_buffer *text,
+                                const hoedown_renderer_data *data)
+{
+    zval *definition, *parameters;
+    TSRMLS_FETCH();
+
+    definition = php_hoedown_is_renderer("tablebody", data TSRMLS_CC);
+    if (!definition) {
+        return;
+    }
+
+    MAKE_STD_ZVAL(parameters);
+    array_init_size(parameters, 1);
+    if (text) {
+        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+    } else {
+        add_next_index_stringl(parameters, "", 0, 1);
+    }
+
+    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+
+    zval_ptr_dtor(&parameters);
+}
+
+static void
+php_hoedown_renderer_table_row(hoedown_buffer *ob,
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
+{
+    zval *definition, *parameters;
+    TSRMLS_FETCH();
+
+    definition = php_hoedown_is_renderer("tablerow", data TSRMLS_CC);
+    if (!definition) {
+        return;
+    }
+
+    MAKE_STD_ZVAL(parameters);
+    array_init_size(parameters, 1);
+    if (text) {
+        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+    } else {
+        add_next_index_stringl(parameters, "", 0, 1);
+    }
+
+    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+
+    zval_ptr_dtor(&parameters);
+}
+
+static void
+php_hoedown_renderer_table_cell(hoedown_buffer *ob,
+                                const hoedown_buffer *text,
+                                unsigned int flags,
+                                const hoedown_renderer_data *data)
 {
    zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("tablecell", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("tablecell", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -885,12 +952,13 @@ php_hoedown_renderer_table_cell(hoedown_buffer *ob, const hoedown_buffer *text,
 
 static void
 php_hoedown_renderer_footnotes(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("footnotes", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("footnotes", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -910,13 +978,14 @@ php_hoedown_renderer_footnotes(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_footnote_def(hoedown_buffer *ob,
-                                  const hoedown_buffer *text, unsigned int num,
-                                  void *opaque)
+                                  const hoedown_buffer *text,
+                                  unsigned int num,
+                                  const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("footnotedef", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("footnotedef", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -936,13 +1005,15 @@ php_hoedown_renderer_footnote_def(hoedown_buffer *ob,
 }
 
 static int
-php_hoedown_renderer_autolink(hoedown_buffer *ob, const hoedown_buffer *link,
-                              enum hoedown_autolink type, void *opaque)
+php_hoedown_renderer_autolink(hoedown_buffer *ob,
+                              const hoedown_buffer *link,
+                              hoedown_autolink_type type,
+                              const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("autolink", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("autolink", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -964,13 +1035,15 @@ php_hoedown_renderer_autolink(hoedown_buffer *ob, const hoedown_buffer *link,
 }
 
 static int
-php_hoedown_renderer_codespan(hoedown_buffer *ob, const hoedown_buffer *text,
-                              const hoedown_buffer *attr, void *opaque)
+php_hoedown_renderer_codespan(hoedown_buffer *ob,
+                              const hoedown_buffer *text,
+                              const hoedown_buffer *attr,
+                              const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("codespan", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("codespan", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -997,12 +1070,13 @@ php_hoedown_renderer_codespan(hoedown_buffer *ob, const hoedown_buffer *text,
 
 static int
 php_hoedown_renderer_double_emphasis(hoedown_buffer *ob,
-                                     const hoedown_buffer *text, void *opaque)
+                                     const hoedown_buffer *text,
+                                     const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("doubleemphasis", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("doubleemphasis", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1024,12 +1098,13 @@ php_hoedown_renderer_double_emphasis(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_emphasis(hoedown_buffer *ob,
-                              const hoedown_buffer *text, void *opaque)
+                              const hoedown_buffer *text,
+                              const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("emphasis", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("emphasis", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1051,12 +1126,13 @@ php_hoedown_renderer_emphasis(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_underline(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("underline", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("underline", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1078,12 +1154,13 @@ php_hoedown_renderer_underline(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_highlight(hoedown_buffer *ob,
-                               const hoedown_buffer *text, void *opaque)
+                               const hoedown_buffer *text,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("highlight", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("highlight", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1105,12 +1182,13 @@ php_hoedown_renderer_highlight(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_quote(hoedown_buffer *ob,
-                           const hoedown_buffer *text, void *opaque)
+                           const hoedown_buffer *text,
+                           const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("quote", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("quote", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1135,12 +1213,13 @@ php_hoedown_renderer_image(hoedown_buffer *ob,
                            const hoedown_buffer *link,
                            const hoedown_buffer *title,
                            const hoedown_buffer *alt,
-                           const hoedown_buffer *attr, void *opaque)
+                           const hoedown_buffer *attr,
+                           const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("image", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("image", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1176,12 +1255,13 @@ php_hoedown_renderer_image(hoedown_buffer *ob,
 }
 
 static int
-php_hoedown_renderer_linebreak(hoedown_buffer *ob, void *opaque)
+php_hoedown_renderer_linebreak(hoedown_buffer *ob,
+                               const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("linebreak", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("linebreak", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1198,21 +1278,28 @@ php_hoedown_renderer_linebreak(hoedown_buffer *ob, void *opaque)
 
 static int
 php_hoedown_renderer_link(hoedown_buffer *ob,
+                          const hoedown_buffer *content,
                           const hoedown_buffer *link,
                           const hoedown_buffer *title,
-                          const hoedown_buffer *content,
-                          const hoedown_buffer *attr, void *opaque)
+                          const hoedown_buffer *attr,
+                          const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("link", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("link", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
 
     MAKE_STD_ZVAL(parameters);
     array_init_size(parameters, 4);
+    if (content) {
+        add_next_index_stringl(parameters,
+                               (char *)content->data, content->size, 1);
+    } else {
+        add_next_index_stringl(parameters, "", 0, 1);
+    }
     if (link) {
         add_next_index_stringl(parameters, (char *)link->data, link->size, 1);
     } else {
@@ -1220,12 +1307,6 @@ php_hoedown_renderer_link(hoedown_buffer *ob,
     }
     if (title) {
         add_next_index_stringl(parameters, (char *)title->data, title->size, 1);
-    } else {
-        add_next_index_stringl(parameters, "", 0, 1);
-    }
-    if (content) {
-        add_next_index_stringl(parameters,
-                               (char *)content->data, content->size, 1);
     } else {
         add_next_index_stringl(parameters, "", 0, 1);
     }
@@ -1243,13 +1324,14 @@ php_hoedown_renderer_link(hoedown_buffer *ob,
 }
 
 static int
-php_hoedown_renderer_raw_html_tag(hoedown_buffer *ob,
-                                  const hoedown_buffer *tag, void *opaque)
+php_hoedown_renderer_raw_html(hoedown_buffer *ob,
+                              const hoedown_buffer *tag,
+                              const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("rawhtmltag", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("rawhtml", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1271,12 +1353,13 @@ php_hoedown_renderer_raw_html_tag(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_triple_emphasis(hoedown_buffer *ob,
-                                     const hoedown_buffer *text, void *opaque)
+                                     const hoedown_buffer *text,
+                                     const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("tripleemphasis", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("tripleemphasis", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1298,12 +1381,13 @@ php_hoedown_renderer_triple_emphasis(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_strikethrough(hoedown_buffer *ob,
-                                   const hoedown_buffer *text, void *opaque)
+                                   const hoedown_buffer *text,
+                                   const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("strikethrough", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("strikethrough", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1325,12 +1409,13 @@ php_hoedown_renderer_strikethrough(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_superscript(hoedown_buffer *ob,
-                                 const hoedown_buffer *text, void *opaque)
+                                 const hoedown_buffer *text,
+                                 const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("superscript", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("superscript", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1352,12 +1437,13 @@ php_hoedown_renderer_superscript(hoedown_buffer *ob,
 
 static int
 php_hoedown_renderer_footnote_ref(hoedown_buffer *ob,
-                                  unsigned int num, void *opaque)
+                                  unsigned int num,
+                                  const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("footnoteref", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("footnoteref", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1375,12 +1461,13 @@ php_hoedown_renderer_footnote_ref(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_entity(hoedown_buffer *ob,
-                            const hoedown_buffer *entity, void *opaque)
+                            const hoedown_buffer *entity,
+                            const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("entity", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("entity", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -1402,12 +1489,12 @@ php_hoedown_renderer_entity(hoedown_buffer *ob,
 static int
 php_hoedown_renderer_math(hoedown_buffer *ob,
                           const hoedown_buffer *text, int displaymode,
-                          void *opaque)
+                          const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("math", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("math", data TSRMLS_CC);
     if (!definition) {
         return 0;
     }
@@ -1430,12 +1517,13 @@ php_hoedown_renderer_math(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_normal_text(hoedown_buffer *ob,
-                                 const hoedown_buffer *text, void *opaque)
+                                 const hoedown_buffer *text,
+                                 const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("normaltext", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("normaltext", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -1455,12 +1543,13 @@ php_hoedown_renderer_normal_text(hoedown_buffer *ob,
 
 static void
 php_hoedown_renderer_user_block(hoedown_buffer *ob,
-                                const hoedown_buffer *text, void *opaque)
+                                const hoedown_buffer *text,
+                                const hoedown_renderer_data *data)
 {
     zval *definition, *parameters;
     TSRMLS_FETCH();
 
-    definition = php_hoedown_is_renderer("userblock", opaque TSRMLS_CC);
+    definition = php_hoedown_is_renderer("userblock", data TSRMLS_CC);
     if (!definition) {
         return;
     }
@@ -1479,9 +1568,10 @@ php_hoedown_renderer_user_block(hoedown_buffer *ob,
 }
 
 static size_t
-php_hoedown_renderer_is_user_block(uint8_t *data, size_t size, void *opaque)
+php_hoedown_callback_user_block(uint8_t *text, size_t size,
+                                const hoedown_renderer_data *data)
 {
-    hoedown_html_renderer_state *state = opaque;
+    hoedown_html_renderer_state *state = data->opaque;
     zval *definition = NULL, *parameters;
     zval fname;
     zval *result = NULL, **args[2];
@@ -1489,16 +1579,16 @@ php_hoedown_renderer_is_user_block(uint8_t *data, size_t size, void *opaque)
     TSRMLS_FETCH();
 
     if (state) {
-        definition = ((php_hoedown_options_t *)state->opaque)->is_user;
+        definition = ((php_hoedown_options_t *)state->opaque)->user_block;
     }
     if (!definition) {
-        HOEDOWN_ERR(E_WARNING, "Undefined is_user");
+        HOEDOWN_ERR(E_WARNING, "Undefined user_block");
         return 0;
     }
 
     MAKE_STD_ZVAL(parameters);
     array_init_size(parameters, 1);
-    add_next_index_stringl(parameters, (char *)data, size, 1);
+    add_next_index_stringl(parameters, (char *)text, size, 1);
 
     ZVAL_STRINGL(&fname, "call_user_func_array",
                  sizeof("call_user_func_array")-1, 0);
@@ -1572,6 +1662,10 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
         renderer->paragraph = php_hoedown_renderer_paragraph;
     } else if (strcmp(name, "table") == 0) {
         renderer->table = php_hoedown_renderer_table;
+    } else if (strcmp(name, "tableheader") == 0) {
+        renderer->table_header = php_hoedown_renderer_table_header;
+    } else if (strcmp(name, "tablebody") == 0) {
+        renderer->table_body = php_hoedown_renderer_table_body;
     } else if (strcmp(name, "tablerow") == 0) {
         renderer->table_row = php_hoedown_renderer_table_row;
     } else if (strcmp(name, "tablecell") == 0) {
@@ -1600,8 +1694,8 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
         renderer->linebreak = php_hoedown_renderer_linebreak;
     } else if (strcmp(name, "link") == 0) {
         renderer->link = php_hoedown_renderer_link;
-    } else if (strcmp(name, "rawhtmltag") == 0) {
-        renderer->raw_html_tag = php_hoedown_renderer_raw_html_tag;
+    } else if (strcmp(name, "rawhtml") == 0) {
+        renderer->raw_html = php_hoedown_renderer_raw_html;
     } else if (strcmp(name, "tripleemphasis") == 0) {
         renderer->triple_emphasis = php_hoedown_renderer_triple_emphasis;
     } else if (strcmp(name, "strikethrough") == 0) {
@@ -1624,7 +1718,7 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
 }
 
 static int
-php_hoedown_is_user_block(zval *definition TSRMLS_DC)
+php_hoedown_user_block(zval *definition TSRMLS_DC)
 {
     char *error = NULL;
     zend_bool retval;
@@ -1639,7 +1733,7 @@ php_hoedown_is_user_block(zval *definition TSRMLS_DC)
         efree(error);
     }
     if (!retval) {
-        HOEDOWN_ERR(E_WARNING, "Call to undefined is_user");
+        HOEDOWN_ERR(E_WARNING, "Call to undefined user_block");
         return 0;
     }
     return 1;
@@ -1686,10 +1780,10 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                 state->toc_data.footer = Z_STRVAL_P(options->toc.footer);
             }
 
-            if (php_hoedown_is_user_block(options->is_user TSRMLS_CC)) {
+            if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
                 document = hoedown_document_new(
                     renderer, options->extension,
-                    16, php_hoedown_renderer_is_user_block);
+                    16, php_hoedown_callback_user_block);
             } else {
                 document = hoedown_document_new(renderer, options->extension,
                                                 16, NULL);
@@ -1752,9 +1846,9 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     state->opaque = (void *)options;
 
     /* init document */
-    if (php_hoedown_is_user_block(options->is_user TSRMLS_CC)) {
+    if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
         document = hoedown_document_new(renderer, options->extension,
-                                        16, php_hoedown_renderer_is_user_block);
+                                        16, php_hoedown_callback_user_block);
     } else {
         document = hoedown_document_new(renderer, options->extension, 16, NULL);
     }
@@ -2085,13 +2179,13 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(RENDERER_TOC, HOEDOWN_OPT_RENDERER_TOC);
 
     HOEDOWN_CONST_LONG(SKIP_HTML, HOEDOWN_OPT_HTML_SKIP_HTML);
-    HOEDOWN_CONST_LONG(SAFELINK, HOEDOWN_OPT_HTML_SAFELINK);
     HOEDOWN_CONST_LONG(HARD_WRAP, HOEDOWN_OPT_HTML_HARD_WRAP);
     HOEDOWN_CONST_LONG(USE_XHTML, HOEDOWN_OPT_HTML_USE_XHTML);
     HOEDOWN_CONST_LONG(ESCAPE, HOEDOWN_OPT_HTML_ESCAPE);
-    HOEDOWN_CONST_LONG(TASK_LIST, HOEDOWN_OPT_HTML_TASK_LIST);
+    HOEDOWN_CONST_LONG(TASK_LIST, HOEDOWN_OPT_HTML_USE_TASK_LIST);
     HOEDOWN_CONST_LONG(LINE_CONTINUE, HOEDOWN_OPT_HTML_LINE_CONTINUE);
     HOEDOWN_CONST_LONG(HEADER_ID, HOEDOWN_OPT_HTML_HEADER_ID);
+    HOEDOWN_CONST_LONG(FENCED_CODE_SCRIPT, HOEDOWN_OPT_HTML_FENCED_CODE_SCRIPT);
 
     HOEDOWN_CONST_LONG(TABLES, HOEDOWN_OPT_EXT_TABLES);
     HOEDOWN_CONST_LONG(FENCED_CODE, HOEDOWN_OPT_EXT_FENCED_CODE);
@@ -2103,13 +2197,13 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(QUOTE, HOEDOWN_OPT_EXT_QUOTE);
     HOEDOWN_CONST_LONG(SUPERSCRIPT, HOEDOWN_OPT_EXT_SUPERSCRIPT);
     HOEDOWN_CONST_LONG(MATH, HOEDOWN_OPT_EXT_MATH);
-    HOEDOWN_CONST_LONG(LAX_SPACING, HOEDOWN_OPT_EXT_LAX_SPACING);
     HOEDOWN_CONST_LONG(NO_INTRA_EMPHASIS, HOEDOWN_OPT_EXT_NO_INTRA_EMPHASIS);
     HOEDOWN_CONST_LONG(SPACE_HEADERS, HOEDOWN_OPT_EXT_SPACE_HEADERS);
     HOEDOWN_CONST_LONG(MATH_EXPLICIT, HOEDOWN_OPT_EXT_MATH_EXPLICIT);
     HOEDOWN_CONST_LONG(DISABLE_INDENTED_CODE,
                        HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE);
     HOEDOWN_CONST_LONG(SPECIAL_ATTRIBUTE, HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE);
+    HOEDOWN_CONST_LONG(SCRIPT_TAGS, HOEDOWN_OPT_EXT_SCRIPT_TAGS);
 
     HOEDOWN_CONST_LONG(TOC, HOEDOWN_OPT_TOC);
     HOEDOWN_CONST_LONG(TOC_BEGIN, HOEDOWN_OPT_TOC_BEGIN);
@@ -2119,7 +2213,7 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(TOC_FOOTER, HOEDOWN_OPT_TOC_FOOTER);
 
     HOEDOWN_CONST_LONG(RENDERS, HOEDOWN_OPT_RENDERS);
-    HOEDOWN_CONST_LONG(IS_USER, HOEDOWN_OPT_IS_USER_BLOCK);
+    HOEDOWN_CONST_LONG(USER_BLOCK, HOEDOWN_OPT_USER_BLOCK);
 
     /* ini */
     ZEND_INIT_MODULE_GLOBALS(hoedown, hoedown_init_globals, NULL);

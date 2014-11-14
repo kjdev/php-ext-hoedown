@@ -31,12 +31,15 @@ echo $hoedown->parse($text);
 --EXPECTF--
 == default ==
 bool(true)
-<table><thead>
+<table>
+<thead>
 <tr>
 <th>First Header</th>
 <th>Second Header</th>
 </tr>
-</thead><tbody>
+</thead>
+
+<tbody>
 <tr>
 <td>Content Cell</td>
 <td>Content Cell</td>
@@ -45,15 +48,19 @@ bool(true)
 <td>Content Cell</td>
 <td>Content Cel</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
 == enable ==
 bool(true)
-<table><thead>
+<table>
+<thead>
 <tr>
 <th>First Header</th>
 <th>Second Header</th>
 </tr>
-</thead><tbody>
+</thead>
+
+<tbody>
 <tr>
 <td>Content Cell</td>
 <td>Content Cell</td>
@@ -62,7 +69,8 @@ bool(true)
 <td>Content Cell</td>
 <td>Content Cel</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
 == disable ==
 bool(false)
 <p>First Header  | Second Header

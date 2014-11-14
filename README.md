@@ -8,18 +8,6 @@ This extension allows Hoedown.
 
 * PHP 5.3 +
 
-## RPM Package
-
-[Related article](http://hiden.samurai-factory.jp/php/hoedown/download)
-
-* CentOS 6: [php-pecl-hoedown-0.4.1-0.el6.sf.x86_64.rpm](http://hiden.samurai-factory.jp/download/rpm/el6/php-pecl-hoedown-0.4.1-0.el6.sf.x86_64.rpm)
-* Fedora 20: [php-pecl-hoedown-0.4.1-0.fc20.sf.x86_64.rpm](http://hiden.samurai-factory.jp/download/rpm/fc20/php-pecl-hoedown-0.4.1-0.fc20.sf.x86_64.rpm)
-
-## Windows DLL
-
-* VC11 x86 Non Thread Safe: PHP 5.5 (5.5.12): [php-hoedown-0.4.1-5.5-nts-Win32-VC11-x86.zip](http://hiden.samurai-factory.jp/download/dll/php-hoedown-0.4.1-5.5-nts-Win32-VC11-x86.zip)
-* VC11 x86 Thread Safe: PHP 5.5 (5.5.12): [php-hoedown-0.4.1-5.5-Win32-VC11-x86.zip](http://hiden.samurai-factory.jp/download/dll/php-hoedown-0.4.1-5.5-Win32-VC11-x86.zip)
-
 ## Build
 
 ```
@@ -65,6 +53,7 @@ hoedown.options | tables,fenced-code,autolink,strikethrough,no-intra-emphasis | 
   * Hoedown::AUTOLINK
   * Hoedown::STRIKETHROUGH
   * Hoedown::NO\_INTRA\_EMPHASIS
+  * Hoedown::SCRIPT\_TAGS
 
 ## Class synopsis
 
@@ -91,13 +80,13 @@ Name                             | Type   | Default | Description
 Hoedown::RENDERER\_HTML          | bool   | TRUE    | Render HTML.
 Hoedown::RENDERER\_TOC           | bool   | FALSE   | Render the Table of Contents in HTML.
 Hoedown::SKIP\_HTML              | bool   | FALSE   | Strip all HTML tags.
-Hoedown::SAFELINK                | bool   | FALSE   | Only allow links to safe protocols.
 Hoedown::HARD\_WRAP              | bool   | FALSE   | Render each linebreak as \<br\>.
 Hoedown::USE\_XHTML              | bool   | FALSE   | Render XHTML.
 Hoedown::ESCAPE                  | bool   | FALSE   | Escaple all HTML.
-Hoedown::TASK\_LIST              | bool   | FALSE   | Render task lists.
+Hoedown::USE\_TASK\_LIST         | bool   | FALSE   | Render task lists.
 Hoedown::LINE\_CONTINUE          | bool   | FALSE   | Render line continue.
 Hoedown::HEADER\_ID              | bool   | FALSE   | Render header id.
+Hoedown::FENCED\_CODE\_SCRIPT    | bool   | FALSE   | Render script of fenced code blocks style.
 Hoedown::TABLES                  | bool   | TRUE    | Parse PHP-Markdown style tables.
 Hoedown::FENCED\_CODE            | bool   | TRUE    | Parse fenced code blocks.
 Hoedown::FOOTNOTES               | bool   | FALSE   | Parse footnotes.
@@ -111,6 +100,7 @@ Hoedown::NO\_INTRA\_EMPHASIS     | bool   | TRUE    | Disable emphasis\_between\
 Hoedown::SPACE\_HEADERS          | bool   | FALSE   | Requqire a space after '#' in headers.
 Hoedown::DISABLE\_INDENTED\_CODE | bool   | FALSE   | Don't parse indented code blocks.
 Hoedown::SPECIAL\_ATTRIBUTE      | bool   | FALSE   | Parse special attributes.
+Hoedown::SCRIPT\_TAGS            | bool   | FALSE   | Parse script tags `<?..?>`.
 Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents.
 Hoedown::TOC\_BEGIN              | int    | 0       | Begin level for headers included in the TOC.
 Hoedown::TOC\_END                | int    | 6       | End level for headers included in the TOC.
@@ -487,7 +477,9 @@ Render functions:
 * hrule()
 * list($text, $attr, $flags)
 * listitem($text, $attr, $flags)
-* table($header, $body, $attr)
+* table($text, $attr)
+* tableheader($text)
+* tablebody($text)
 * tablerow($text)
 * tablecell($text, $flags)
 * footnotes($text)
@@ -518,7 +510,7 @@ simple php code.
 ```php
 $hoedown = new Hoedown;
 
-$hoedown->setOption(Hoedown::IS_USER, function($text) {
+$hoedown->setOption(Hoedown::USER_BLOCK, function($text) {
         // Returns the value of user block length
         if (preg_match('/^<\?php.*\?>/is', $text, $matches)) {
             return strlen($matches[0]);

@@ -10,8 +10,8 @@ EOT;
 
 $hoedown = new Hoedown;
 
-echo "== closure: is_user ==\n";
-$hoedown->setOption(Hoedown::IS_USER, function($text) {
+echo "== closure: user_block ==\n";
+$hoedown->setOption(Hoedown::USER_BLOCK, function($text) {
         if (preg_match('/^{closure.*}/', $text, $matches)) {
             var_dump($matches[0]);
             return strlen($matches[0]);
@@ -21,8 +21,8 @@ $hoedown->setOption(Hoedown::IS_USER, function($text) {
 
 echo $hoedown->parse($text), "\n";
 
-echo "== function: is_user ==\n";
-function is_user($text) {
+echo "== function: user_block ==\n";
+function user_block($text) {
     if (preg_match('/^{function.*}/', $text, $matches)) {
         var_dump($matches[0]);
         return strlen($matches[0]);
@@ -30,14 +30,14 @@ function is_user($text) {
     return 0;
 }
 
-$hoedown->setOption(Hoedown::IS_USER, 'is_user');
+$hoedown->setOption(Hoedown::USER_BLOCK, 'user_block');
 
 echo $hoedown->parse($text), "\n";
 
-echo "== static closure: is_user ==\n";
+echo "== static closure: user_block ==\n";
 echo Hoedown::ofString(
     $text, array(
-        Hoedown::IS_USER => function($text) {
+        Hoedown::USER_BLOCK => function($text) {
             if (preg_match('/^{closure.*}/', $text, $matches)) {
                 var_dump($matches[0]);
                 return strlen($matches[0]);
@@ -45,26 +45,26 @@ echo Hoedown::ofString(
             return 0;
         })), "\n";
 
-echo "== static function: is_user ==\n";
-echo Hoedown::ofString($text, array(Hoedown::IS_USER => 'is_user')), "\n";
+echo "== static function: user_block ==\n";
+echo Hoedown::ofString($text, array(Hoedown::USER_BLOCK => 'user_block')), "\n";
 
 --EXPECTF--
-== closure: is_user ==
+== closure: user_block ==
 string(25) "{closure "closure test" }"
 {closure "closure test" }
 <p>{function &quot;function test&quot; }</p>
 
-== function: is_user ==
+== function: user_block ==
 string(27) "{function "function test" }"
 <p>{closure &quot;closure test&quot; }
 {function "function test" }</p>
 
-== static closure: is_user ==
+== static closure: user_block ==
 string(25) "{closure "closure test" }"
 {closure "closure test" }
 <p>{function &quot;function test&quot; }</p>
 
-== static function: is_user ==
+== static function: user_block ==
 string(27) "{function "function test" }"
 <p>{closure &quot;closure test&quot; }
 {function "function test" }</p>

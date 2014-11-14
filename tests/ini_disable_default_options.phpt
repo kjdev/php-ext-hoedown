@@ -54,12 +54,15 @@ echo Hoedown::ofString($text);
 == parse ==
 <h1>table</h1>
 
-<table><thead>
+<table>
+<thead>
 <tr>
 <th>First Header</th>
 <th>Second Header</th>
 </tr>
-</thead><tbody>
+</thead>
+
+<tbody>
 <tr>
 <td>Content Cell</td>
 <td>Content Cell</td>
@@ -68,7 +71,8 @@ echo Hoedown::ofString($text);
 <td>Content Cell</td>
 <td>Content Cel</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
 
 <h2>fenced code</h2>
 
@@ -89,12 +93,15 @@ echo Hoedown::ofString($text);
 == ofString ==
 <h1>table</h1>
 
-<table><thead>
+<table>
+<thead>
 <tr>
 <th>First Header</th>
 <th>Second Header</th>
 </tr>
-</thead><tbody>
+</thead>
+
+<tbody>
 <tr>
 <td>Content Cell</td>
 <td>Content Cell</td>
@@ -103,7 +110,8 @@ echo Hoedown::ofString($text);
 <td>Content Cell</td>
 <td>Content Cel</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
 
 <h2>fenced code</h2>
 
