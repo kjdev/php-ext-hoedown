@@ -44,7 +44,7 @@ echo $hoedown->parse($text);
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 == default renderer and state ==
@@ -56,7 +56,7 @@ echo $hoedown->parse($text);
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -68,7 +68,7 @@ echo $hoedown->parse($text);
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -84,7 +84,7 @@ echo $hoedown->parse($text);
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>

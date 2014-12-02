@@ -91,7 +91,7 @@ NULL
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -103,7 +103,7 @@ NULL
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -121,7 +121,7 @@ NULL
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -139,7 +139,7 @@ string(16) "== toc footer =="
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -152,7 +152,7 @@ string(16) "== toc footer =="
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -172,7 +172,7 @@ string(16) "== toc footer =="
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -191,7 +191,7 @@ NULL
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -203,7 +203,7 @@ NULL
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -220,7 +220,7 @@ NULL
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>

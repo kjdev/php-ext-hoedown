@@ -36,22 +36,6 @@ $hoedown->setOption(Hoedown::RENDERER_TOC, true);
 var_dump($hoedown->getOption($opt));
 echo $hoedown->parse($text);
 
-$hoedown->setOption($opt, false);
-$hoedown->setOption(Hoedown::RENDERER_HTML, true);
-
-echo "== escape disable: default renderer and state ==\n";
-var_dump($hoedown->getOption($opt));
-echo $hoedown->parse($text, $state);
-if (array_key_exists('toc', $state)) {
-    echo ": toc\n";
-    echo $state['toc'];
-}
-
-echo "== escape disable: toc renderer ==\n";
-$hoedown->setOption(Hoedown::RENDERER_TOC, true);
-var_dump($hoedown->getOption($opt));
-echo $hoedown->parse($text);
-
 $hoedown->setOption($opt, true);
 $hoedown->setOption(Hoedown::RENDERER_HTML, true);
 
@@ -63,9 +47,25 @@ if (array_key_exists('toc', $state)) {
     echo $state['toc'];
 }
 
+echo "== escape enable: toc renderer ==\n";
+$hoedown->setOption(Hoedown::RENDERER_TOC, true);
+var_dump($hoedown->getOption($opt));
+echo $hoedown->parse($text);
+
+$hoedown->setOption($opt, false);
+$hoedown->setOption(Hoedown::RENDERER_HTML, true);
+
+echo "== escape disable: default renderer and state ==\n";
+var_dump($hoedown->getOption($opt));
+echo $hoedown->parse($text, $state);
+if (array_key_exists('toc', $state)) {
+    echo ": toc\n";
+    echo $state['toc'];
+}
+
 --EXPECTF--
 == default renderer and state ==
-bool(true)
+bool(false)
 <h1 id="a">a</h1>
 
 <p>hoge</p>
@@ -74,7 +74,7 @@ bool(true)
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -86,7 +86,7 @@ bool(true)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -94,52 +94,6 @@ bool(true)
 </li>
 </ul>
 == toc renderer ==
-bool(true)
-<ul>
-<li>
-<a href="#a">a</a>
-<ul>
-<li>
-<a href="#b">b</a>
-<ul>
-<li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-== escape disable: default renderer and state ==
-bool(false)
-<h1 id="a">a</h1>
-
-<p>hoge</p>
-
-<h2 id="b">b</h2>
-
-<p>foo</p>
-
-<h3 id="codecodecode"><code>code</code></h3>
-
-<p>huge</p>
-: toc
-<ul>
-<li>
-<a href="#a">a</a>
-<ul>
-<li>
-<a href="#b">b</a>
-<ul>
-<li>
-<a href="#codecodecode"><code>code</code></a>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-== escape disable: toc renderer ==
 bool(false)
 <ul>
 <li>
@@ -149,7 +103,7 @@ bool(false)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode"><code>code</code></a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -166,7 +120,7 @@ bool(true)
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -178,7 +132,53 @@ bool(true)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code">&lt;code&gt;code&lt;/code&gt;</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+== escape enable: toc renderer ==
+bool(true)
+<ul>
+<li>
+<a href="#a">a</a>
+<ul>
+<li>
+<a href="#b">b</a>
+<ul>
+<li>
+<a href="#code">&lt;code&gt;code&lt;/code&gt;</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+== escape disable: default renderer and state ==
+bool(false)
+<h1 id="a">a</h1>
+
+<p>hoge</p>
+
+<h2 id="b">b</h2>
+
+<p>foo</p>
+
+<h3 id="code"><code>code</code></h3>
+
+<p>huge</p>
+: toc
+<ul>
+<li>
+<a href="#a">a</a>
+<ul>
+<li>
+<a href="#b">b</a>
+<ul>
+<li>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>

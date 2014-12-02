@@ -377,6 +377,7 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
 
     options->renderer = HOEDOWN_OPT_RENDERER_HTML;
     options->toc.end = 0;
+    options->toc.unescape = 1;
     options->extension = 0;
     options->html = 0;
 

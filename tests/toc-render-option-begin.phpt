@@ -80,7 +80,7 @@ int(0)
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -92,7 +92,7 @@ int(0)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -109,7 +109,7 @@ int(0)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -126,7 +126,7 @@ int(2)
 
 <p>foo</p>
 
-<h3 id="codecodecode"><code>code</code></h3>
+<h3 id="code"><code>code</code></h3>
 
 <p>huge</p>
 : toc
@@ -135,7 +135,7 @@ int(2)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
@@ -147,7 +147,7 @@ int(2)
 <a href="#b">b</a>
 <ul>
 <li>
-<a href="#codecodecode">&lt;code&gt;code&lt;/code&gt;</a>
+<a href="#code"><code>code</code></a>
 </li>
 </ul>
 </li>
