@@ -34,6 +34,7 @@ typedef struct {
     } toc;
     zval *renders;
     zval *user_block;
+    zval *meta_parse;
 } php_hoedown_options_t;
 
 typedef struct {
@@ -138,6 +139,7 @@ enum {
     HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE,
     HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE,
     HOEDOWN_OPT_EXT_SCRIPT_TAGS,
+    HOEDOWN_OPT_EXT_META_BLOCK,
     HOEDOWN_OPT_EXT_END,
     HOEDOWN_OPT_TOC,
     HOEDOWN_OPT_TOC_BEGIN,
@@ -147,6 +149,7 @@ enum {
     HOEDOWN_OPT_TOC_FOOTER,
     HOEDOWN_OPT_RENDERS,
     HOEDOWN_OPT_USER_BLOCK,
+    HOEDOWN_OPT_META_PARSE,
 };
 
 #define HOEDOWN_DEFAULT_OPT_TOC_LEVEL 6
@@ -272,6 +275,19 @@ php_hoedown_set_option(php_hoedown_options_t *options,
                 ZVAL_ZVAL(options->user_block, val, 1, 0);
             }
             return 0;
+        case HOEDOWN_OPT_META_PARSE:
+            if (Z_TYPE_P(val) == IS_NULL) {
+                if (options->meta_parse) {
+                    zval_ptr_dtor(&options->meta_parse);
+                    options->meta_parse = NULL;
+                }
+            } else {
+                if (!options->meta_parse) {
+                    MAKE_STD_ZVAL(options->meta_parse);
+                }
+                ZVAL_ZVAL(options->meta_parse, val, 1, 0);
+            }
+            return 0;
         default:
             break;
     }
@@ -326,6 +342,7 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         { HOEDOWN_EXT_DISABLE_INDENTED_CODE, "disable-indented-code" },
         { HOEDOWN_EXT_SPECIAL_ATTRIBUTE, "special-attribute" },
         { HOEDOWN_EXT_SCRIPT_TAGS, "script-tags" },
+        { HOEDOWN_EXT_META_BLOCK, "meta-block" },
     };
     php_hoedown_flag_t html_flags[] = {
         { HOEDOWN_HTML_SKIP_HTML, "skip-html" },
@@ -388,7 +405,7 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
 
     endp = opts + strlen(opts);
     p1 = opts;
-    p2 = php_memnstr(opts, ",", 1, endp);
+    p2 = (char *)php_memnstr(opts, ",", 1, endp);
 
     if (p2 == NULL) {
         php_hoedown_set_options_flag(options, p1, strlen(opts));
@@ -396,7 +413,7 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
         do {
             php_hoedown_set_options_flag(options, p1, p2 - p1);
             p1 = p2 + 1;
-        } while ((p2 = php_memnstr(p1, ",", 1, endp)) != NULL);
+        } while ((p2 = (char *)php_memnstr(p1, ",", 1, endp)) != NULL);
         if (p1 <= endp) {
             php_hoedown_set_options_flag(options, p1, endp - p1);
         }
@@ -417,6 +434,9 @@ php_hoedown_options_destroy(php_hoedown_options_t *options TSRMLS_DC)
     }
     if (options->user_block) {
         zval_ptr_dtor(&options->user_block);
+    }
+    if (options->meta_parse) {
+        zval_ptr_dtor(&options->meta_parse);
     }
 }
 
@@ -1741,11 +1761,66 @@ php_hoedown_user_block(zval *definition TSRMLS_DC)
 }
 
 static int
+php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
+                                zval *definition, zval **return_state TSRMLS_DC)
+{
+    char *error = NULL;
+    zval *parameters;
+    zval fname;
+    zval *result = NULL, **args[2];
+    int retval = 0;
+
+    if (!definition) {
+        return 0;
+    }
+
+    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, NULL,
+                                 &error TSRMLS_CC);
+    if (error) {
+        efree(error);
+    }
+    if (!retval) {
+        HOEDOWN_ERR(E_WARNING, "Call to undefined meta_parse");
+        return 0;
+    }
+
+    MAKE_STD_ZVAL(parameters);
+    array_init_size(parameters, 1);
+    add_next_index_stringl(parameters, (char *)text, size, 1);
+
+    ZVAL_STRINGL(&fname, "call_user_func_array",
+                 sizeof("call_user_func_array")-1, 0);
+
+    args[0] = &definition;
+    args[1] = &parameters;
+
+    call_user_function_ex(EG(function_table), NULL, &fname,
+                          &result, 2, args, 0, NULL TSRMLS_CC);
+
+    if (result) {
+        if (Z_TYPE_PP(return_state) != IS_ARRAY) {
+            array_init(*return_state);
+        }
+
+        zend_symtable_update(Z_ARRVAL_PP(return_state),
+                             "meta", sizeof("meta"),
+                             &result, sizeof(result), NULL);
+
+        retval = 1;
+    }
+
+    zval_ptr_dtor(&parameters);
+
+    return retval;
+}
+
+
+static int
 php_hoedown_parse(zval *return_value, zval *return_state,
                   char *contents, size_t length,
                   php_hoedown_options_t *options TSRMLS_DC)
 {
-    hoedown_buffer *buf;
+    hoedown_buffer *buf, *meta;
     hoedown_renderer *renderer;
     hoedown_document *document;
     hoedown_html_renderer_state *state;
@@ -1759,6 +1834,12 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     buf = hoedown_buffer_new(HOEDOWN_BUFFER_UNIT);
     if (!buf) {
         HOEDOWN_ERR(E_WARNING, "Couldn't allocate output buffer");
+        return 1;
+    }
+    meta = hoedown_buffer_new(HOEDOWN_BUFFER_UNIT);
+    if (!meta) {
+        hoedown_buffer_free(buf);
+        HOEDOWN_ERR(E_WARNING, "Couldn't allocate meta block buffer");
         return 1;
     }
 
@@ -1782,12 +1863,14 @@ php_hoedown_parse(zval *return_value, zval *return_state,
             }
 
             if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
-                document = hoedown_document_new(
-                    renderer, options->extension,
-                    16, php_hoedown_callback_user_block);
+                document = hoedown_document_new(renderer,
+                                                options->extension, 16,
+                                                php_hoedown_callback_user_block,
+                                                NULL);
             } else {
-                document = hoedown_document_new(renderer, options->extension,
-                                                16, NULL);
+                document = hoedown_document_new(renderer,
+                                                options->extension, 16,
+                                                NULL, NULL);
             }
 
             hoedown_document_render(document, buf,
@@ -1799,6 +1882,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
             if (options->renderer == HOEDOWN_OPT_RENDERER_TOC) {
                 RETVAL_STRINGL((char *)buf->data, buf->size, 1);
                 hoedown_buffer_free(buf);
+                hoedown_buffer_free(meta);
                 return 0;
             } else {
                 zval *zv;
@@ -1848,10 +1932,13 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 
     /* init document */
     if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
-        document = hoedown_document_new(renderer, options->extension,
-                                        16, php_hoedown_callback_user_block);
+        document = hoedown_document_new(renderer,
+                                        options->extension, 16,
+                                        php_hoedown_callback_user_block, meta);
     } else {
-        document = hoedown_document_new(renderer, options->extension, 16, NULL);
+        document = hoedown_document_new(renderer,
+                                        options->extension, 16,
+                                        NULL, meta);
     }
 
     /* execute parse */
@@ -1865,8 +1952,30 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     /* setting return value */
     RETVAL_STRINGL((char *)buf->data, buf->size, 1);
 
+    /* TODO: meta block */
+    if (options->extension & HOEDOWN_OPT_EXT_META_BLOCK &&
+        return_state && meta->size > 0) {
+        if (php_hoedown_callback_meta_parse(meta->data, meta->size,
+                                            options->meta_parse,
+                                            &return_state TSRMLS_CC) == 0) {
+            zval *zv;
+
+            MAKE_STD_ZVAL(zv);
+            ZVAL_STRINGL(zv, (char *)meta->data, meta->size, 1);
+
+            if (Z_TYPE_P(return_state) != IS_ARRAY) {
+                array_init(return_state);
+            }
+
+            zend_symtable_update(Z_ARRVAL_P(return_state),
+                                 "meta", sizeof("meta"),
+                                 &zv, sizeof(zv), NULL);
+        }
+    }
+
     /* cleanup buffer */
     hoedown_buffer_free(buf);
+    hoedown_buffer_free(meta);
 
     return 0;
 }
@@ -1888,6 +1997,10 @@ HOEDOWN_METHOD(parse)
     }
 
     HOEDOWN_OBJ(intern, getThis());
+
+    if (state) {
+        ZVAL_NULL(state);
+    }
 
     /* markdown parse */
     if (php_hoedown_parse(return_value, state, buf, buf_len,
@@ -1923,6 +2036,10 @@ HOEDOWN_METHOD(parseFile)
                                         REPORT_ERRORS, NULL, NULL);
     if (!stream) {
         RETURN_FALSE;
+    }
+
+    if (state) {
+        ZVAL_NULL(state);
     }
 
     if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
@@ -2014,6 +2131,10 @@ HOEDOWN_METHOD(ofString)
         php_hoedown_set_options(&options, opts TSRMLS_CC);
     }
 
+    if (state) {
+        ZVAL_NULL(state);
+    }
+
     /* markdown parse */
     if (php_hoedown_parse(return_value, state, buf, buf_len,
                           &options TSRMLS_CC) != 0) {
@@ -2055,6 +2176,10 @@ HOEDOWN_METHOD(ofFile)
     if (!stream) {
         php_hoedown_options_destroy(&options TSRMLS_CC);
         RETURN_FALSE;
+    }
+
+    if (state) {
+        ZVAL_NULL(state);
     }
 
     if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
@@ -2205,6 +2330,7 @@ ZEND_MINIT_FUNCTION(hoedown)
                        HOEDOWN_OPT_EXT_DISABLE_INDENTED_CODE);
     HOEDOWN_CONST_LONG(SPECIAL_ATTRIBUTE, HOEDOWN_OPT_EXT_SPECIAL_ATTRIBUTE);
     HOEDOWN_CONST_LONG(SCRIPT_TAGS, HOEDOWN_OPT_EXT_SCRIPT_TAGS);
+    HOEDOWN_CONST_LONG(META_BLOCK, HOEDOWN_OPT_EXT_META_BLOCK);
 
     HOEDOWN_CONST_LONG(TOC, HOEDOWN_OPT_TOC);
     HOEDOWN_CONST_LONG(TOC_BEGIN, HOEDOWN_OPT_TOC_BEGIN);
@@ -2215,6 +2341,7 @@ ZEND_MINIT_FUNCTION(hoedown)
 
     HOEDOWN_CONST_LONG(RENDERS, HOEDOWN_OPT_RENDERS);
     HOEDOWN_CONST_LONG(USER_BLOCK, HOEDOWN_OPT_USER_BLOCK);
+    HOEDOWN_CONST_LONG(META_PARSE, HOEDOWN_OPT_META_PARSE);
 
     /* ini */
     ZEND_INIT_MODULE_GLOBALS(hoedown, hoedown_init_globals, NULL);

@@ -53,7 +53,6 @@ hoedown.options | tables,fenced-code,autolink,strikethrough,no-intra-emphasis | 
   * Hoedown::AUTOLINK
   * Hoedown::STRIKETHROUGH
   * Hoedown::NO\_INTRA\_EMPHASIS
-  * Hoedown::SCRIPT\_TAGS
 
 ## Class synopsis
 
@@ -101,6 +100,7 @@ Hoedown::SPACE\_HEADERS          | bool   | FALSE   | Requqire a space after '#'
 Hoedown::DISABLE\_INDENTED\_CODE | bool   | FALSE   | Don't parse indented code blocks.
 Hoedown::SPECIAL\_ATTRIBUTE      | bool   | FALSE   | Parse special attributes.
 Hoedown::SCRIPT\_TAGS            | bool   | FALSE   | Parse script tags `<?..?>`.
+Hoedown::META\_BLOCK             | bool   | FALSE   | Parse meta block `<!--*..*-->`.
 Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents.
 Hoedown::TOC\_BEGIN              | int    | 0       | Begin level for headers included in the TOC.
 Hoedown::TOC\_END                | int    | 6       | End level for headers included in the TOC.
@@ -538,4 +538,90 @@ output:
 test
 ```
 
+## Meta block
 
+Add the `Hoedown::META_BLOCK` to options.
+
+Get a meta block by running in the following program.
+
+```php
+$text = <<<EOT
+<!--*
+  author: user
+  title: Welcom to use
+  tags: [ markdown, metadata ]
+*-->
+test
+EOT;
+
+$hoedown = new Hoedown;
+
+$hoedown->setOption(Hoedown::META_BLOCK, true);
+
+echo $hoedown->parse($text, $meta), PHP_EOL;
+
+var_dump($meta);
+```
+
+output:
+
+```
+<p>test</p>
+
+array(1) {
+  ["meta"]=>
+  string(69) "  author: user
+  title: Welcom to use
+  tags: [ markdown, metadata ]
+"
+}
+```
+
+* Parse meta block
+
+Set the `Hoedown::META_PARSE` function to options.
+
+```php
+$text = <<<EOT
+<!--*
+  author: user
+  title: Welcom to use
+  tags: [ markdown, metadata ]
+*-->
+test
+EOT;
+
+$hoedown = new Hoedown;
+
+$hoedown->setOption(Hoedown::META_BLOCK, true);
+$hoedown->setOption(Hoedown::META_PARSE, function($text) {
+    return yaml_parse($text);
+});
+
+echo $hoedown->parse($text, $meta), PHP_EOL;
+
+var_dump($meta);
+```
+
+output:
+
+```
+<p>test</p>
+
+array(1) {
+  ["meta"]=>
+  array(3) {
+    ["author"]=>
+    string(4) "user"
+    ["title"]=>
+    string(13) "Welcom to use"
+    ["tags"]=>
+    array(2) {
+      [0]=>
+      string(8) "markdown"
+      [1]=>
+      string(8) "metadata"
+    }
+  }
+}
+```
