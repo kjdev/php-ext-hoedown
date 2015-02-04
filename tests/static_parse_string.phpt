@@ -55,6 +55,42 @@ if (is_array($state) && array_key_exists('toc', $state)) {
 echo "== ofString : empty ==\n";
 echo Hoedown::ofString('');
 
+echo "== ofString : with ini_set toc ==\n";
+ini_set('hoedown.options', 'toc');
+Hoedown::ofString($text, [], $state);
+if (is_array($state) && array_key_exists('toc', $state)) {
+    echo ": toc\n";
+    echo $state['toc'];
+}
+unset($state);
+
+echo "== ofString : with ini_set toc:2 ==\n";
+ini_set('hoedown.options', 'toc:2');
+Hoedown::ofString($text, [], $state);
+if (is_array($state) && array_key_exists('toc', $state)) {
+    echo ": toc\n";
+    echo $state['toc'];
+}
+unset($state);
+
+echo "== ofString : with ini_set toc::4 ==\n";
+ini_set('hoedown.options', 'toc::4');
+Hoedown::ofString($text, [], $state);
+if (is_array($state) && array_key_exists('toc', $state)) {
+    echo ": toc\n";
+    echo $state['toc'];
+}
+unset($state);
+
+echo "== ofString : with ini_set toc:2:4 ==\n";
+ini_set('hoedown.options', 'toc:2:4');
+Hoedown::ofString($text, [], $state);
+if (is_array($state) && array_key_exists('toc', $state)) {
+    echo ": toc\n";
+    echo $state['toc'];
+}
+unset($state);
+
 --EXPECTF--
 == ofString ==
 <h1>table</h1>
@@ -226,3 +262,91 @@ echo Hoedown::ofString('');
 </li>
 </ul>
 == ofString : empty ==
+== ofString : with ini_set toc ==
+: toc
+<ul>
+<li>
+<a href="#table">table</a>
+<ul>
+<li>
+<a href="#fenced-code">fenced code</a>
+<ul>
+<li>
+<a href="#autolink">autolink</a>
+<ul>
+<li>
+<a href="#strikethrough">strikethrough</a>
+<ul>
+<li>
+<a href="#no-intra-emphasis">no intra emphasis</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+== ofString : with ini_set toc:2 ==
+: toc
+<ul>
+<li>
+<a href="#fenced-code">fenced code</a>
+<ul>
+<li>
+<a href="#autolink">autolink</a>
+<ul>
+<li>
+<a href="#strikethrough">strikethrough</a>
+<ul>
+<li>
+<a href="#no-intra-emphasis">no intra emphasis</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+== ofString : with ini_set toc::4 ==
+: toc
+<ul>
+<li>
+<a href="#table">table</a>
+<ul>
+<li>
+<a href="#fenced-code">fenced code</a>
+<ul>
+<li>
+<a href="#autolink">autolink</a>
+<ul>
+<li>
+<a href="#strikethrough">strikethrough</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+== ofString : with ini_set toc:2:4 ==
+: toc
+<ul>
+<li>
+<a href="#fenced-code">fenced code</a>
+<ul>
+<li>
+<a href="#autolink">autolink</a>
+<ul>
+<li>
+<a href="#strikethrough">strikethrough</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>

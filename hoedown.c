@@ -355,7 +355,7 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         { HOEDOWN_HTML_FENCED_CODE_SCRIPT, "fenced-code-script" },
     };
     php_hoedown_flag_t *flag;
-    int n, i = 0;
+    int n, i = 0, j = 0;
 
     /* extension */
     i = 0;
@@ -383,6 +383,36 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
         }
         ++i;
     } while (i < n);
+
+    /* toc */
+    if (strncasecmp(name, "toc", 3) == 0) {
+        options->toc.end = HOEDOWN_DEFAULT_OPT_TOC_LEVEL;
+        if (size > 3 && name[3] == ':') {
+            n = 0;
+            for (i = 4; i < size; i++) {
+                if (isdigit(name[i])) {
+                    if (n) {
+                        n = (n * 10) + (name[i] - '0');
+                    } else {
+                        n = (name[i] - '0');
+                    }
+                } else if (name[i] == ':') {
+                    if (n) {
+                        options->toc.begin = n;
+                    }
+                    n = 0;
+                    j++;
+                }
+            }
+            if (n) {
+                if (j) {
+                    options->toc.end = n;
+                } else {
+                    options->toc.begin = n;
+                }
+            }
+        }
+    }
 }
 
 static void
@@ -1952,7 +1982,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     /* setting return value */
     RETVAL_STRINGL((char *)buf->data, buf->size, 1);
 
-    /* TODO: meta block */
+    /* meta block */
     if (options->extension & HOEDOWN_OPT_EXT_META_BLOCK &&
         return_state && meta->size > 0) {
         if (php_hoedown_callback_meta_parse(meta->data, meta->size,
