@@ -28,7 +28,6 @@ typedef struct {
     struct {
         int begin;
         int end;
-        int unescape;
         zval *header;
         zval *footer;
     } toc;
@@ -144,7 +143,6 @@ enum {
     HOEDOWN_OPT_TOC,
     HOEDOWN_OPT_TOC_BEGIN,
     HOEDOWN_OPT_TOC_END,
-    HOEDOWN_OPT_TOC_ESCAPE,
     HOEDOWN_OPT_TOC_HEADER,
     HOEDOWN_OPT_TOC_FOOTER,
     HOEDOWN_OPT_RENDERS,
@@ -214,14 +212,6 @@ php_hoedown_set_option(php_hoedown_options_t *options,
         case HOEDOWN_OPT_TOC_END:
             convert_to_long(val);
             options->toc.end = Z_LVAL_P(val);
-            return 0;
-        case HOEDOWN_OPT_TOC_ESCAPE:
-            convert_to_boolean(val);
-            if (Z_BVAL_P(val)) {
-                options->toc.unescape = 0;
-            } else {
-                options->toc.unescape = 1;
-            }
             return 0;
         case HOEDOWN_OPT_TOC_HEADER:
             convert_to_string(val);
@@ -424,7 +414,6 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
 
     options->renderer = HOEDOWN_OPT_RENDERER_HTML;
     options->toc.end = 0;
-    options->toc.unescape = 1;
     options->extension = 0;
     options->html = 0;
 
@@ -540,11 +529,6 @@ HOEDOWN_METHOD(getOption)
                 RETURN_LONG(intern->options.toc.begin);
             case HOEDOWN_OPT_TOC_END:
                 RETURN_LONG(intern->options.toc.end);
-            case HOEDOWN_OPT_TOC_ESCAPE:
-                if (intern->options.toc.unescape) {
-                    RETURN_FALSE;
-                }
-                RETURN_TRUE;
             case HOEDOWN_OPT_TOC_HEADER:
                 if (intern->options.toc.header) {
                     RETURN_ZVAL(intern->options.toc.header, 1, 0);
@@ -1884,7 +1868,6 @@ php_hoedown_parse(zval *return_value, zval *return_state,
             state->toc_data.current_level = 0;
             state->toc_data.level_offset = options->toc.begin;
             state->toc_data.nesting_level = toc_level;
-            state->toc_data.unescape = options->toc.unescape;
             if (options->toc.header) {
                 state->toc_data.header = Z_STRVAL_P(options->toc.header);
             }
@@ -2365,7 +2348,6 @@ ZEND_MINIT_FUNCTION(hoedown)
     HOEDOWN_CONST_LONG(TOC, HOEDOWN_OPT_TOC);
     HOEDOWN_CONST_LONG(TOC_BEGIN, HOEDOWN_OPT_TOC_BEGIN);
     HOEDOWN_CONST_LONG(TOC_END, HOEDOWN_OPT_TOC_END);
-    HOEDOWN_CONST_LONG(TOC_ESCAPE, HOEDOWN_OPT_TOC_ESCAPE);
     HOEDOWN_CONST_LONG(TOC_HEADER, HOEDOWN_OPT_TOC_HEADER);
     HOEDOWN_CONST_LONG(TOC_FOOTER, HOEDOWN_OPT_TOC_FOOTER);
 

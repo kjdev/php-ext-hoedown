@@ -104,7 +104,6 @@ Hoedown::META\_BLOCK             | bool   | FALSE   | Parse meta block `<!--*..*
 Hoedown::TOC                     | bool   | FALSE   | Produce links to the Table of Contents.
 Hoedown::TOC\_BEGIN              | int    | 0       | Begin level for headers included in the TOC.
 Hoedown::TOC\_END                | int    | 6       | End level for headers included in the TOC.
-Hoedown::TOC\_ESCAPE             | bool   | FALSE   | Escape int the TOC.
 Hoedown::TOC\_HEADER             | string | ""      | Render header in the TOC.
 Hoedown::TOC\_FOOTER             | string | ""      | Render footer in the TOC.
 
