@@ -1,7 +1,7 @@
 #ifndef PHP_HOEDOWN_H
 #define PHP_HOEDOWN_H
 
-#define HOEDOWN_EXT_VERSION "0.6.2"
+#define HOEDOWN_EXT_VERSION "0.6.3"
 
 extern zend_module_entry hoedown_module_entry;
 #define phpext_hoedown_ptr &hoedown_module_entry
