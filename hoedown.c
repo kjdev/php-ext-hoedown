@@ -28,17 +28,17 @@ typedef struct {
     struct {
         int begin;
         int end;
-        zval *header;
-        zval *footer;
+        zval header;
+        zval footer;
     } toc;
-    zval *renders;
-    zval *user_block;
-    zval *meta_parse;
+    zval renders;
+    zval user_block;
+    zval meta_parse;
 } php_hoedown_options_t;
 
 typedef struct {
-    zend_object std;
     php_hoedown_options_t options;
+    zend_object std;
 } php_hoedown_t;
 
 #define HOEDOWN_METHOD(name) ZEND_METHOD(Hoedown, name)
@@ -53,7 +53,7 @@ typedef struct {
     "tables,fenced-code,autolink,strikethrough,no-intra-emphasis"
 
 ZEND_INI_BEGIN()
-    STD_ZEND_INI_ENTRY("hoedown.options", (char *)HOEDOWN_DEFAULT_OPTIONS,
+    STD_ZEND_INI_ENTRY("hoedown.options", HOEDOWN_DEFAULT_OPTIONS,
                        ZEND_INI_ALL, OnUpdateString, options,
                        zend_hoedown_globals, hoedown_globals)
 ZEND_INI_END()
@@ -153,16 +153,21 @@ enum {
 #define HOEDOWN_DEFAULT_OPT_TOC_LEVEL 6
 
 #define HOEDOWN_OBJ(self, obj) \
-    self = (php_hoedown_t *)zend_object_store_get_object(obj TSRMLS_CC)
+    self = (php_hoedown_t *)((char *)Z_OBJ_P(obj) - XtOffsetOf(php_hoedown_t, std))
 
 static int
 php_hoedown_set_option(php_hoedown_options_t *options,
                        int opt, zval *val TSRMLS_DC)
 {
+    if (Z_TYPE_P(val) == IS_LONG &&
+        (opt != HOEDOWN_OPT_TOC_END && opt != HOEDOWN_OPT_TOC_BEGIN)) {
+        opt = Z_LVAL_P(val);
+    }
+
     if (opt >= HOEDOWN_OPT_HTML && opt < HOEDOWN_OPT_HTML_END) {
         int n = (1 << (opt - HOEDOWN_OPT_HTML));
         convert_to_boolean(val);
-        if (Z_BVAL_P(val)) {
+        if (Z_TYPE_P(val) == IS_TRUE) {
             options->html |= n;
             if (opt == HOEDOWN_OPT_HTML_FENCED_CODE_SCRIPT) {
                 options->extension |= HOEDOWN_OPT_EXT_FENCED_CODE;
@@ -174,7 +179,7 @@ php_hoedown_set_option(php_hoedown_options_t *options,
     } else if (opt >= HOEDOWN_OPT_EXT && opt < HOEDOWN_OPT_EXT_END) {
         int n = (1 << (opt - HOEDOWN_OPT_EXT));
         convert_to_boolean(val);
-        if (Z_BVAL_P(val)) {
+        if (Z_TYPE_P(val) == IS_TRUE) {
             options->extension |= n;
         } else if (options->extension & n) {
             options->extension ^= n;
@@ -185,13 +190,13 @@ php_hoedown_set_option(php_hoedown_options_t *options,
     switch (opt) {
         case HOEDOWN_OPT_RENDERER_HTML:
             convert_to_boolean(val);
-            if (Z_BVAL_P(val)) {
+            if (Z_TYPE_P(val) == IS_TRUE) {
                 options->renderer = opt;
             }
             return 0;
         case HOEDOWN_OPT_RENDERER_TOC:
             convert_to_boolean(val);
-            if (Z_BVAL_P(val)) {
+            if (Z_TYPE_P(val) == IS_TRUE) {
                 options->renderer = opt;
             } else {
                 options->renderer = HOEDOWN_OPT_RENDERER_HTML;
@@ -199,7 +204,7 @@ php_hoedown_set_option(php_hoedown_options_t *options,
             return 0;
         case HOEDOWN_OPT_TOC:
             convert_to_boolean(val);
-            if (Z_BVAL_P(val)) {
+            if (Z_TYPE_P(val) == IS_TRUE) {
                 options->toc.end = HOEDOWN_DEFAULT_OPT_TOC_LEVEL;
             } else {
                 options->toc.end = 0;
@@ -216,66 +221,45 @@ php_hoedown_set_option(php_hoedown_options_t *options,
         case HOEDOWN_OPT_TOC_HEADER:
             convert_to_string(val);
             if (Z_STRLEN_P(val) <= 0) {
-                if (options->toc.header) {
-                    zval_ptr_dtor(&options->toc.header);
-                    options->toc.header = NULL;
+                if (!Z_ISUNDEF(options->toc.header)) {
+                    zval_dtor(&options->toc.header);
+                    ZVAL_UNDEF(&options->toc.header);
                 }
             } else {
-                if (!options->toc.header) {
-                    MAKE_STD_ZVAL(options->toc.header);
-                }
-                ZVAL_ZVAL(options->toc.header, val, 1, 0);
+                ZVAL_ZVAL(&options->toc.header, val, 1, 0);
             }
             return 0;
         case HOEDOWN_OPT_TOC_FOOTER:
             convert_to_string(val);
             if (Z_STRLEN_P(val) <= 0) {
-                if (options->toc.footer) {
-                    zval_ptr_dtor(&options->toc.footer);
-                    options->toc.footer = NULL;
+                if (!Z_ISUNDEF(options->toc.footer)) {
+                    zval_dtor(&options->toc.footer);
+                    ZVAL_UNDEF(&options->toc.footer);
                 }
             } else {
-                if (!options->toc.footer) {
-                    MAKE_STD_ZVAL(options->toc.footer);
-                }
-                ZVAL_ZVAL(options->toc.footer, val, 1, 0);
+                ZVAL_ZVAL(&options->toc.footer, val, 1, 0);
             }
             return 0;
         case HOEDOWN_OPT_RENDERS:
-            if (!options->renders) {
-                MAKE_STD_ZVAL(options->renders);
-                array_init(options->renders);
-            }
-            if (Z_TYPE_P(val) == IS_ARRAY) {
-                php_array_merge(Z_ARRVAL_P(options->renders), Z_ARRVAL_P(val),
-                                1 TSRMLS_CC);
-                return 0;
-            }
-            break;
+            php_array_merge(Z_ARRVAL_P(&options->renders), Z_ARRVAL_P(val));
+            return 0;
         case HOEDOWN_OPT_USER_BLOCK:
-            if (Z_TYPE_P(val) == IS_NULL) {
-                if (options->user_block) {
-                    zval_ptr_dtor(&options->user_block);
-                    options->user_block = NULL;
-                }
-            } else {
-                if (!options->user_block) {
-                    MAKE_STD_ZVAL(options->user_block);
-                }
-                ZVAL_ZVAL(options->user_block, val, 1, 0);
+            if (!Z_ISUNDEF(options->user_block)) {
+                zval_dtor(&options->user_block);
+                ZVAL_UNDEF(&options->user_block);
+            }
+            if (Z_TYPE_P(val) != IS_NULL) {
+                ZVAL_ZVAL(&options->user_block, val, 1, 0);
             }
             return 0;
         case HOEDOWN_OPT_META_PARSE:
             if (Z_TYPE_P(val) == IS_NULL) {
-                if (options->meta_parse) {
-                    zval_ptr_dtor(&options->meta_parse);
-                    options->meta_parse = NULL;
+                if (!Z_ISUNDEF(options->meta_parse)) {
+                    zval_dtor(&options->meta_parse);
+                    ZVAL_UNDEF(&options->meta_parse);
                 }
             } else {
-                if (!options->meta_parse) {
-                    MAKE_STD_ZVAL(options->meta_parse);
-                }
-                ZVAL_ZVAL(options->meta_parse, val, 1, 0);
+                ZVAL_ZVAL(&options->meta_parse, val, 1, 0);
             }
             return 0;
         default:
@@ -288,22 +272,12 @@ php_hoedown_set_option(php_hoedown_options_t *options,
 static void
 php_hoedown_set_options(php_hoedown_options_t *options, zval *val TSRMLS_DC)
 {
-    zval **value;
-    uint key_len;
-    char *key;
-    ulong key_index;
+    zval *value;
+    ulong key;
 
-    for (zend_hash_internal_pointer_reset(Z_ARRVAL_P(val));
-         zend_hash_get_current_data(Z_ARRVAL_P(val), (void *)&value) == SUCCESS;
-         zend_hash_move_forward(Z_ARRVAL_P(val))) {
-        if (zend_hash_get_current_key_ex(Z_ARRVAL_P(val),
-                                         &key, &key_len, &key_index,
-                                         0, NULL) == HASH_KEY_IS_LONG) {
-            php_hoedown_set_option(options, key_index, *value TSRMLS_CC);
-        } else {
-            HOEDOWN_ERR(E_WARNING, "Invalid configuration options");
-        }
-    }
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(val), key, value) {
+        php_hoedown_set_option(options, key, value TSRMLS_CC);
+    } ZEND_HASH_FOREACH_END();
 }
 
 typedef struct {
@@ -413,9 +387,18 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
     memset(options, 0, sizeof(php_hoedown_options_t));
 
     options->renderer = HOEDOWN_OPT_RENDERER_HTML;
-    options->toc.end = 0;
-    options->extension = 0;
     options->html = 0;
+    options->extension = 0;
+
+    options->toc.begin = 0;
+    options->toc.end = 0;
+    ZVAL_UNDEF(&options->toc.header);
+    ZVAL_UNDEF(&options->toc.footer);
+
+    array_init(&options->renders);
+
+    ZVAL_UNDEF(&options->user_block);
+    ZVAL_UNDEF(&options->meta_parse);
 
     opts = HOEDOWN_G(options);
     if (!opts || strlen(opts) == 0) {
@@ -442,20 +425,18 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
 static void
 php_hoedown_options_destroy(php_hoedown_options_t *options TSRMLS_DC)
 {
-    if (options->toc.header) {
-        zval_ptr_dtor(&options->toc.header);
+    if (!Z_ISUNDEF(options->toc.header)) {
+        zval_dtor(&options->toc.header);
     }
-    if (options->toc.footer) {
-        zval_ptr_dtor(&options->toc.footer);
+    if (!Z_ISUNDEF(options->toc.footer)) {
+        zval_dtor(&options->toc.footer);
     }
-    if (options->renders) {
-        zval_ptr_dtor(&options->renders);
+    zval_dtor(&options->renders);
+    if (!Z_ISUNDEF(options->user_block)) {
+        zval_dtor(&options->user_block);
     }
-    if (options->user_block) {
-        zval_ptr_dtor(&options->user_block);
-    }
-    if (options->meta_parse) {
-        zval_ptr_dtor(&options->meta_parse);
+    if (!Z_ISUNDEF(options->meta_parse)) {
+        zval_dtor(&options->meta_parse);
     }
 }
 
@@ -478,7 +459,7 @@ HOEDOWN_METHOD(__construct)
 
 HOEDOWN_METHOD(setOption)
 {
-    long option;
+    zend_long option;
     zval *value;
     php_hoedown_t *intern;
 
@@ -498,7 +479,7 @@ HOEDOWN_METHOD(setOption)
 
 HOEDOWN_METHOD(getOption)
 {
-    long option;
+    zend_long option;
     php_hoedown_t *intern;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l",
@@ -530,13 +511,13 @@ HOEDOWN_METHOD(getOption)
             case HOEDOWN_OPT_TOC_END:
                 RETURN_LONG(intern->options.toc.end);
             case HOEDOWN_OPT_TOC_HEADER:
-                if (intern->options.toc.header) {
-                    RETURN_ZVAL(intern->options.toc.header, 1, 0);
+                if (!Z_ISUNDEF(intern->options.toc.header)) {
+                    RETURN_ZVAL(&intern->options.toc.header, 1, 0);
                 }
                 RETURN_NULL();
             case HOEDOWN_OPT_TOC_FOOTER:
-                if (intern->options.toc.footer) {
-                    RETURN_ZVAL(intern->options.toc.footer, 1, 0);
+                if (!Z_ISUNDEF(intern->options.toc.footer)) {
+                    RETURN_ZVAL(&intern->options.toc.footer, 1, 0);
                 }
                 RETURN_NULL();
             default:
@@ -566,24 +547,24 @@ php_hoedown_is_renderer(char *name, const hoedown_renderer_data *data TSRMLS_DC)
 {
     hoedown_html_renderer_state *state = data->opaque;
     zval *renders = NULL;
-    zval **definition = NULL;
+    zval *definition = NULL;
 
     if (state) {
-        renders = ((php_hoedown_options_t *)state->opaque)->renders;
+        renders = &((php_hoedown_options_t *)state->opaque)->renders;
     }
 
-    if (!name || !renders || Z_TYPE_P(renders) != IS_ARRAY) {
+    if (!name || !renders) {
         HOEDOWN_ERR(E_WARNING, "Undefined renders");
         return NULL;
     }
 
-    if (zend_hash_find(Z_ARRVAL_P(renders), name, strlen(name)+1,
-                       (void **)&definition) == FAILURE || !definition) {
+    definition = zend_hash_str_find(Z_ARRVAL_P(renders), name, strlen(name));
+    if (!definition) {
         HOEDOWN_ERR(E_WARNING, "Undefined render '%s'", name);
         return NULL;
     }
 
-    return *definition;
+    return definition;
 }
 
 static void
@@ -591,22 +572,22 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
                          zval *parameters TSRMLS_DC)
 {
     zval fname;
-    zval *result = NULL, **args[2];
+    zval result, args[2];
 
     ZVAL_STRINGL(&fname, "call_user_func_array",
-                 sizeof("call_user_func_array")-1, 0);
+                 sizeof("call_user_func_array")-1);
 
-    args[0] = &definition;
-    args[1] = &parameters;
+    args[0] = *definition;
+    args[1] = *parameters;
 
     call_user_function_ex(EG(function_table), NULL, &fname,
                           &result, 2, args, 0, NULL TSRMLS_CC);
-    if (result) {
-        if (Z_TYPE_P(result) == IS_STRING) {
-            hoedown_buffer_put(ob, Z_STRVAL_P(result), Z_STRLEN_P(result));
-        }
-        zval_ptr_dtor(&result);
+    if (Z_TYPE(result) == IS_STRING) {
+        hoedown_buffer_put(ob, Z_STRVAL(result), Z_STRLEN(result));
     }
+
+    zval_dtor(&fname);
+    zval_dtor(&result);
 }
 
 static void
@@ -616,7 +597,7 @@ php_hoedown_renderer_blockcode(hoedown_buffer *ob,
                                const hoedown_buffer *attr,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("blockcode", data TSRMLS_CC);
@@ -624,27 +605,26 @@ php_hoedown_renderer_blockcode(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 3);
+    array_init_size(&parameters, 3);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (lang) {
-        add_next_index_stringl(parameters, (char *)lang->data, lang->size, 1);
+        add_next_index_stringl(&parameters, (char *)lang->data, lang->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -652,7 +632,7 @@ php_hoedown_renderer_blockquote(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("blockquote", data TSRMLS_CC);
@@ -660,17 +640,16 @@ php_hoedown_renderer_blockquote(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -678,7 +657,7 @@ php_hoedown_renderer_blockhtml(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("blockhtml", data TSRMLS_CC);
@@ -686,17 +665,16 @@ php_hoedown_renderer_blockhtml(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -706,7 +684,7 @@ php_hoedown_renderer_header(hoedown_buffer *ob,
                             int level,
                             const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("header", data TSRMLS_CC);
@@ -714,29 +692,28 @@ php_hoedown_renderer_header(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 3);
+    array_init_size(&parameters, 3);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, level);
+    add_next_index_long(&parameters, level);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
 php_hoedown_renderer_hrule(hoedown_buffer *ob, const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("hrule", data TSRMLS_CC);
@@ -744,12 +721,11 @@ php_hoedown_renderer_hrule(hoedown_buffer *ob, const hoedown_renderer_data *data
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 0);
+    array_init_size(&parameters, 0);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -759,7 +735,7 @@ php_hoedown_renderer_list(hoedown_buffer *ob,
                           unsigned int flags,
                           const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("list", data TSRMLS_CC);
@@ -767,23 +743,22 @@ php_hoedown_renderer_list(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 3);
+    array_init_size(&parameters, 3);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, flags);
+    add_next_index_long(&parameters, flags);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -793,7 +768,7 @@ php_hoedown_renderer_listitem(hoedown_buffer *ob,
                               unsigned int *flags,
                               const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("listitem", data TSRMLS_CC);
@@ -801,23 +776,22 @@ php_hoedown_renderer_listitem(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 3);
+    array_init_size(&parameters, 3);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, *flags);
+    add_next_index_long(&parameters, *flags);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -825,7 +799,7 @@ php_hoedown_renderer_paragraph(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("paragraph", data TSRMLS_CC);
@@ -833,17 +807,16 @@ php_hoedown_renderer_paragraph(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -852,7 +825,7 @@ php_hoedown_renderer_table(hoedown_buffer *ob,
                            const hoedown_buffer *attr,
                            const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("table", data TSRMLS_CC);
@@ -860,23 +833,22 @@ php_hoedown_renderer_table(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (content) {
-        add_next_index_stringl(parameters,
-                               (char *)content->data, content->size, 1);
+        add_next_index_stringl(&parameters,
+                               (char *)content->data, content->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -884,7 +856,7 @@ php_hoedown_renderer_table_header(hoedown_buffer *ob,
                                   const hoedown_buffer *text,
                                   const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("tableheader", data TSRMLS_CC);
@@ -892,17 +864,16 @@ php_hoedown_renderer_table_header(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -910,7 +881,7 @@ php_hoedown_renderer_table_body(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("tablebody", data TSRMLS_CC);
@@ -918,17 +889,16 @@ php_hoedown_renderer_table_body(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -936,7 +906,7 @@ php_hoedown_renderer_table_row(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("tablerow", data TSRMLS_CC);
@@ -944,17 +914,16 @@ php_hoedown_renderer_table_row(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -963,7 +932,7 @@ php_hoedown_renderer_table_cell(hoedown_buffer *ob,
                                 unsigned int flags,
                                 const hoedown_renderer_data *data)
 {
-   zval *definition, *parameters;
+   zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("tablecell", data TSRMLS_CC);
@@ -971,18 +940,17 @@ php_hoedown_renderer_table_cell(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, flags);
+    add_next_index_long(&parameters, flags);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -990,7 +958,7 @@ php_hoedown_renderer_footnotes(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("footnotes", data TSRMLS_CC);
@@ -998,17 +966,16 @@ php_hoedown_renderer_footnotes(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -1017,7 +984,7 @@ php_hoedown_renderer_footnote_def(hoedown_buffer *ob,
                                   unsigned int num,
                                   const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("footnotedef", data TSRMLS_CC);
@@ -1025,18 +992,17 @@ php_hoedown_renderer_footnote_def(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, num);
+    add_next_index_long(&parameters, num);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static int
@@ -1045,7 +1011,7 @@ php_hoedown_renderer_autolink(hoedown_buffer *ob,
                               hoedown_autolink_type type,
                               const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("autolink", data TSRMLS_CC);
@@ -1053,18 +1019,17 @@ php_hoedown_renderer_autolink(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (link) {
-        add_next_index_stringl(parameters, (char *)link->data, link->size, 1);
+        add_next_index_stringl(&parameters, (char *)link->data, link->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, type);
+    add_next_index_long(&parameters, type);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1075,7 +1040,7 @@ php_hoedown_renderer_codespan(hoedown_buffer *ob,
                               const hoedown_buffer *attr,
                               const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("codespan", data TSRMLS_CC);
@@ -1083,22 +1048,21 @@ php_hoedown_renderer_codespan(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1108,7 +1072,7 @@ php_hoedown_renderer_double_emphasis(hoedown_buffer *ob,
                                      const hoedown_buffer *text,
                                      const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("doubleemphasis", data TSRMLS_CC);
@@ -1116,17 +1080,16 @@ php_hoedown_renderer_double_emphasis(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1136,7 +1099,7 @@ php_hoedown_renderer_emphasis(hoedown_buffer *ob,
                               const hoedown_buffer *text,
                               const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("emphasis", data TSRMLS_CC);
@@ -1144,17 +1107,16 @@ php_hoedown_renderer_emphasis(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1164,7 +1126,7 @@ php_hoedown_renderer_underline(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("underline", data TSRMLS_CC);
@@ -1172,17 +1134,16 @@ php_hoedown_renderer_underline(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1192,7 +1153,7 @@ php_hoedown_renderer_highlight(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("highlight", data TSRMLS_CC);
@@ -1200,17 +1161,16 @@ php_hoedown_renderer_highlight(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1220,7 +1180,7 @@ php_hoedown_renderer_quote(hoedown_buffer *ob,
                            const hoedown_buffer *text,
                            const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("quote", data TSRMLS_CC);
@@ -1228,17 +1188,16 @@ php_hoedown_renderer_quote(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1251,7 +1210,7 @@ php_hoedown_renderer_image(hoedown_buffer *ob,
                            const hoedown_buffer *attr,
                            const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("image", data TSRMLS_CC);
@@ -1259,32 +1218,31 @@ php_hoedown_renderer_image(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 4);
+    array_init_size(&parameters, 4);
     if (link) {
-        add_next_index_stringl(parameters, (char *)link->data, link->size, 1);
+        add_next_index_stringl(&parameters, (char *)link->data, link->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (title) {
-        add_next_index_stringl(parameters, (char *)title->data, title->size, 1);
+        add_next_index_stringl(&parameters, (char *)title->data, title->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (alt) {
-        add_next_index_stringl(parameters, (char *)alt->data, alt->size, 1);
+        add_next_index_stringl(&parameters, (char *)alt->data, alt->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1293,7 +1251,7 @@ static int
 php_hoedown_renderer_linebreak(hoedown_buffer *ob,
                                const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("linebreak", data TSRMLS_CC);
@@ -1301,12 +1259,11 @@ php_hoedown_renderer_linebreak(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 0);
+    array_init_size(&parameters, 0);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1319,7 +1276,7 @@ php_hoedown_renderer_link(hoedown_buffer *ob,
                           const hoedown_buffer *attr,
                           const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("link", data TSRMLS_CC);
@@ -1327,33 +1284,32 @@ php_hoedown_renderer_link(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 4);
+    array_init_size(&parameters, 4);
     if (content) {
-        add_next_index_stringl(parameters,
-                               (char *)content->data, content->size, 1);
+        add_next_index_stringl(&parameters,
+                               (char *)content->data, content->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (link) {
-        add_next_index_stringl(parameters, (char *)link->data, link->size, 1);
+        add_next_index_stringl(&parameters, (char *)link->data, link->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (title) {
-        add_next_index_stringl(parameters, (char *)title->data, title->size, 1);
+        add_next_index_stringl(&parameters, (char *)title->data, title->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
     if (attr) {
-        add_next_index_stringl(parameters, (char *)attr->data, attr->size, 1);
+        add_next_index_stringl(&parameters, (char *)attr->data, attr->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1363,7 +1319,7 @@ php_hoedown_renderer_raw_html(hoedown_buffer *ob,
                               const hoedown_buffer *tag,
                               const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("rawhtml", data TSRMLS_CC);
@@ -1371,17 +1327,16 @@ php_hoedown_renderer_raw_html(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (tag) {
-        add_next_index_stringl(parameters, (char *)tag->data, tag->size, 1);
+        add_next_index_stringl(&parameters, (char *)tag->data, tag->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1391,7 +1346,7 @@ php_hoedown_renderer_triple_emphasis(hoedown_buffer *ob,
                                      const hoedown_buffer *text,
                                      const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("tripleemphasis", data TSRMLS_CC);
@@ -1399,17 +1354,16 @@ php_hoedown_renderer_triple_emphasis(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1419,7 +1373,7 @@ php_hoedown_renderer_strikethrough(hoedown_buffer *ob,
                                    const hoedown_buffer *text,
                                    const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("strikethrough", data TSRMLS_CC);
@@ -1427,17 +1381,16 @@ php_hoedown_renderer_strikethrough(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1447,7 +1400,7 @@ php_hoedown_renderer_superscript(hoedown_buffer *ob,
                                  const hoedown_buffer *text,
                                  const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("superscript", data TSRMLS_CC);
@@ -1455,17 +1408,16 @@ php_hoedown_renderer_superscript(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1475,7 +1427,7 @@ php_hoedown_renderer_footnote_ref(hoedown_buffer *ob,
                                   unsigned int num,
                                   const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("footnoteref", data TSRMLS_CC);
@@ -1483,13 +1435,12 @@ php_hoedown_renderer_footnote_ref(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
-    add_next_index_long(parameters, num);
+    array_init_size(&parameters, 1);
+    add_next_index_long(&parameters, num);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1499,7 +1450,7 @@ php_hoedown_renderer_entity(hoedown_buffer *ob,
                             const hoedown_buffer *entity,
                             const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("entity", data TSRMLS_CC);
@@ -1507,18 +1458,17 @@ php_hoedown_renderer_entity(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (entity) {
-        add_next_index_stringl(parameters,
-                               (char *)entity->data, entity->size, 1);
+        add_next_index_stringl(&parameters,
+                               (char *)entity->data, entity->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static int
@@ -1526,7 +1476,7 @@ php_hoedown_renderer_math(hoedown_buffer *ob,
                           const hoedown_buffer *text, int displaymode,
                           const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("math", data TSRMLS_CC);
@@ -1534,18 +1484,17 @@ php_hoedown_renderer_math(hoedown_buffer *ob,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 2);
+    array_init_size(&parameters, 2);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
-    add_next_index_long(parameters, displaymode);
+    add_next_index_long(&parameters, displaymode);
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 
     return 1;
 }
@@ -1555,7 +1504,7 @@ php_hoedown_renderer_normal_text(hoedown_buffer *ob,
                                  const hoedown_buffer *text,
                                  const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("normaltext", data TSRMLS_CC);
@@ -1563,17 +1512,16 @@ php_hoedown_renderer_normal_text(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static void
@@ -1581,7 +1529,7 @@ php_hoedown_renderer_user_block(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    zval *definition, *parameters;
+    zval *definition, parameters;
     TSRMLS_FETCH();
 
     definition = php_hoedown_is_renderer("userblock", data TSRMLS_CC);
@@ -1589,17 +1537,16 @@ php_hoedown_renderer_user_block(hoedown_buffer *ob,
         return;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
+    array_init_size(&parameters, 1);
     if (text) {
-        add_next_index_stringl(parameters, (char *)text->data, text->size, 1);
+        add_next_index_stringl(&parameters, (char *)text->data, text->size);
     } else {
-        add_next_index_stringl(parameters, "", 0, 1);
+        add_next_index_stringl(&parameters, "", 0);
     }
 
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC);
+    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC);
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&parameters);
 }
 
 static size_t
@@ -1607,41 +1554,38 @@ php_hoedown_callback_user_block(uint8_t *text, size_t size,
                                 const hoedown_renderer_data *data)
 {
     hoedown_html_renderer_state *state = data->opaque;
-    zval *definition = NULL, *parameters;
+    zval *definition = NULL, parameters;
     zval fname;
-    zval *result = NULL, **args[2];
+    zval result, args[2];
     long length = 0;
     TSRMLS_FETCH();
 
     if (state) {
-        definition = ((php_hoedown_options_t *)state->opaque)->user_block;
+        definition = &((php_hoedown_options_t *)state->opaque)->user_block;
     }
     if (!definition) {
         HOEDOWN_ERR(E_WARNING, "Undefined user_block");
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
-    add_next_index_stringl(parameters, (char *)text, size, 1);
-
     ZVAL_STRINGL(&fname, "call_user_func_array",
-                 sizeof("call_user_func_array")-1, 0);
+                 sizeof("call_user_func_array")-1);
 
-    args[0] = &definition;
-    args[1] = &parameters;
+
+    args[0] = *definition;
+    array_init_size(&args[1], 1);
+    add_next_index_stringl(&args[1], (char *)text, size);
 
     call_user_function_ex(EG(function_table), NULL, &fname,
                           &result, 2, args, 0, NULL TSRMLS_CC);
 
-    if (result) {
-        if (Z_TYPE_P(result) == IS_LONG) {
-            length = Z_LVAL_P(result);
-        }
-        zval_ptr_dtor(&result);
+    if (Z_TYPE(result) == IS_LONG) {
+        length = Z_LVAL(result);
     }
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&fname);
+    zval_dtor(&args[1]);
+    zval_dtor(&result);
 
     return length;
 }
@@ -1650,23 +1594,22 @@ static void
 php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
                          char *name TSRMLS_DC)
 {
-    zval **definition = NULL;
+    zval *definition = NULL;
     char *error = NULL;
     zend_bool retval;
 
-    if (!name || !renders || Z_TYPE_P(renders) != IS_ARRAY) {
+    if (!name || !renders) {
         HOEDOWN_ERR(E_WARNING, "Undefined renders");
         return;
     }
 
-    if (zend_hash_find(Z_ARRVAL_P(renders), name, strlen(name)+1,
-                       (void **)&definition) == FAILURE || !definition) {
+    definition = zend_hash_str_find(Z_ARRVAL_P(renders), name, strlen(name));
+    if (!definition) {
         HOEDOWN_ERR(E_WARNING, "Undefined render '%s'", name);
         return;
     }
 
-    retval = zend_is_callable_ex(*definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, &error);
     if (error) {
         efree(error);
     }
@@ -1758,12 +1701,11 @@ php_hoedown_user_block(zval *definition TSRMLS_DC)
     char *error = NULL;
     zend_bool retval;
 
-    if (!definition) {
+    if (!definition || Z_ISUNDEF(*definition)) {
         return 0;
     }
 
-    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, &error);
     if (error) {
         efree(error);
     }
@@ -1779,17 +1721,16 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
                                 zval *definition, zval **return_state TSRMLS_DC)
 {
     char *error = NULL;
-    zval *parameters;
+    zval parameters;
     zval fname;
-    zval *result = NULL, **args[2];
+    zval result, args[2];
     int retval = 0;
 
-    if (!definition) {
+    if (!definition || Z_ISUNDEF(*definition)) {
         return 0;
     }
 
-    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+    retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, &error);
     if (error) {
         efree(error);
     }
@@ -1798,32 +1739,33 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
         return 0;
     }
 
-    MAKE_STD_ZVAL(parameters);
-    array_init_size(parameters, 1);
-    add_next_index_stringl(parameters, (char *)text, size, 1);
-
     ZVAL_STRINGL(&fname, "call_user_func_array",
-                 sizeof("call_user_func_array")-1, 0);
+                 sizeof("call_user_func_array")-1);
 
-    args[0] = &definition;
-    args[1] = &parameters;
+    args[0] = *definition;
+    array_init_size(&args[1], 1);
+    add_next_index_stringl(&args[1], (char *)text, size);
 
     call_user_function_ex(EG(function_table), NULL, &fname,
                           &result, 2, args, 0, NULL TSRMLS_CC);
 
-    if (result) {
-        if (Z_TYPE_PP(return_state) != IS_ARRAY) {
+    if (!Z_ISUNDEF(result)) {
+        zend_string *key = zend_string_init("meta", sizeof("meta")-1, 0);
+
+        if (Z_TYPE_P(*return_state) != IS_ARRAY) {
             array_init(*return_state);
         }
 
-        zend_symtable_update(Z_ARRVAL_PP(return_state),
-                             "meta", sizeof("meta"),
-                             &result, sizeof(result), NULL);
+        zend_symtable_update(Z_ARRVAL_P(*return_state), key, &result);
 
         retval = 1;
+
+        zend_string_release(key);
     }
 
-    zval_ptr_dtor(&parameters);
+    zval_dtor(&fname);
+    zval_dtor(&args[1]);
+    zval_dtor(&result);
 
     return retval;
 }
@@ -1868,14 +1810,14 @@ php_hoedown_parse(zval *return_value, zval *return_state,
             state->toc_data.current_level = 0;
             state->toc_data.level_offset = options->toc.begin;
             state->toc_data.nesting_level = toc_level;
-            if (options->toc.header) {
-                state->toc_data.header = Z_STRVAL_P(options->toc.header);
+            if (!Z_ISUNDEF(options->toc.header)) {
+                state->toc_data.header = Z_STRVAL_P(&options->toc.header);
             }
-            if (options->toc.footer) {
-                state->toc_data.footer = Z_STRVAL_P(options->toc.footer);
+            if (!Z_ISUNDEF(options->toc.footer)) {
+                state->toc_data.footer = Z_STRVAL_P(&options->toc.footer);
             }
 
-            if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
+            if (php_hoedown_user_block(&options->user_block TSRMLS_CC)) {
                 document = hoedown_document_new(renderer,
                                                 options->extension, 16,
                                                 php_hoedown_callback_user_block,
@@ -1893,25 +1835,25 @@ php_hoedown_parse(zval *return_value, zval *return_state,
             hoedown_html_renderer_free(renderer);
 
             if (options->renderer == HOEDOWN_OPT_RENDERER_TOC) {
-                RETVAL_STRINGL((char *)buf->data, buf->size, 1);
+                RETVAL_STRINGL((char *)buf->data, buf->size);
                 hoedown_buffer_free(buf);
                 hoedown_buffer_free(meta);
                 return 0;
             } else {
-                zval *zv;
+                zval zv;
+                zend_string *key = zend_string_init("toc", sizeof("toc")-1, 0);
 
-                MAKE_STD_ZVAL(zv);
-                ZVAL_STRINGL(zv, (char *)buf->data, buf->size, 1);
+                ZVAL_STRINGL(&zv, (char *)buf->data, buf->size);
 
                 if (Z_TYPE_P(return_state) != IS_ARRAY) {
                     array_init(return_state);
                 }
 
-                zend_symtable_update(Z_ARRVAL_P(return_state),
-                                     "toc", sizeof("toc"),
-                                     &zv, sizeof(zv), NULL);
+                zend_symtable_update(Z_ARRVAL_P(return_state), key, &zv);
 
                 hoedown_buffer_reset(buf);
+
+                zend_string_release(key);
             }
         }
     }
@@ -1920,23 +1862,17 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     renderer = hoedown_html_renderer_new(options->html, toc_level);
 
     /* override render */
-    if (options->renders && Z_TYPE_P(options->renders) == IS_ARRAY) {
-        HashTable *h = Z_ARRVAL_P(options->renders);
-        HashPosition pos;
-        ulong int_key;
-        char *str_key = NULL;
-        uint str_key_len;
+    if (zend_hash_num_elements(HASH_OF(&options->renders))) {
+        zval *value;
+        zend_string *key;
 
-        zend_hash_internal_pointer_reset_ex(h, &pos);
-        do {
-            if (zend_hash_get_current_key_ex(h, &str_key, &str_key_len,
-                                             &int_key, 0, &pos)
-                != HASH_KEY_IS_STRING || !str_key) {
-                break;
+        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(&options->renders),
+                                      key, value) {
+            if (key) {
+                php_hoedown_set_renderer(&options->renders, renderer,
+                                         ZSTR_VAL(key) TSRMLS_CC);
             }
-            php_hoedown_set_renderer(options->renders, renderer,
-                                     str_key TSRMLS_CC);
-        } while (!zend_hash_move_forward_ex(h, &pos));
+        } ZEND_HASH_FOREACH_END();
     }
 
     /* setting state */
@@ -1944,7 +1880,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     state->opaque = (void *)options;
 
     /* init document */
-    if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
+    if (php_hoedown_user_block(&options->user_block TSRMLS_CC)) {
         document = hoedown_document_new(renderer,
                                         options->extension, 16,
                                         php_hoedown_callback_user_block, meta);
@@ -1963,26 +1899,26 @@ php_hoedown_parse(zval *return_value, zval *return_state,
     hoedown_html_renderer_free(renderer);
 
     /* setting return value */
-    RETVAL_STRINGL((char *)buf->data, buf->size, 1);
+    RETVAL_STRINGL((char *)buf->data, buf->size);
 
     /* meta block */
     if (options->extension & HOEDOWN_OPT_EXT_META_BLOCK &&
         return_state && meta->size > 0) {
         if (php_hoedown_callback_meta_parse(meta->data, meta->size,
-                                            options->meta_parse,
+                                            &options->meta_parse,
                                             &return_state TSRMLS_CC) == 0) {
-            zval *zv;
+            zval zv;
+            zend_string *key = zend_string_init("meta", sizeof("meta")-1, 0);
 
-            MAKE_STD_ZVAL(zv);
-            ZVAL_STRINGL(zv, (char *)meta->data, meta->size, 1);
+            ZVAL_STRINGL(&zv, (char *)meta->data, meta->size);
 
             if (Z_TYPE_P(return_state) != IS_ARRAY) {
                 array_init(return_state);
             }
 
-            zend_symtable_update(Z_ARRVAL_P(return_state),
-                                 "meta", sizeof("meta"),
-                                 &zv, sizeof(zv), NULL);
+            zend_symtable_update(Z_ARRVAL_P(return_state), key,  &zv);
+
+            zend_string_release(key);
         }
     }
 
@@ -1996,11 +1932,11 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 HOEDOWN_METHOD(parse)
 {
     char *buf;
-    int buf_len;
+    size_t buf_len;
     zval *state = NULL;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z",
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z/",
                               &buf, &buf_len, &state) == FAILURE) {
         RETURN_FALSE;
     }
@@ -2012,6 +1948,7 @@ HOEDOWN_METHOD(parse)
     HOEDOWN_OBJ(intern, getThis());
 
     if (state) {
+        zval_ptr_dtor(state);
         ZVAL_NULL(state);
     }
 
@@ -2025,15 +1962,14 @@ HOEDOWN_METHOD(parse)
 HOEDOWN_METHOD(parseFile)
 {
     char *filename;
-    int filename_len;
+    size_t filename_len;
     zval *state = NULL;
-    int len;
     long maxlen = PHP_STREAM_COPY_ALL;
-    char *contents = NULL;
+    zend_string *contents = NULL;
     php_stream *stream;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z",
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z/",
                               &filename, &filename_len, &state) == FAILURE) {
         RETURN_FALSE;
     }
@@ -2052,23 +1988,25 @@ HOEDOWN_METHOD(parseFile)
     }
 
     if (state) {
+        zval_ptr_dtor(state);
         ZVAL_NULL(state);
     }
 
-    if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
-        /* markdown parse */
-        if (php_hoedown_parse(return_value, state, contents, len,
-                              &intern->options TSRMLS_CC) != 0) {
-            RETVAL_FALSE;
+    contents = php_stream_copy_to_mem(stream, maxlen, 0);
+    if (contents) {
+        if (ZSTR_LEN(contents) > 0) {
+            /* markdown parse */
+            if (php_hoedown_parse(return_value, state,
+                                  ZSTR_VAL(contents), ZSTR_LEN(contents),
+                                  &intern->options TSRMLS_CC) != 0) {
+                RETVAL_FALSE;
+            }
+        } else {
+            RETVAL_EMPTY_STRING();
         }
-    } else if (len == 0) {
-        RETVAL_EMPTY_STRING();
+        zend_string_release(contents);
     } else {
         RETVAL_FALSE;
-    }
-
-    if (contents) {
-        efree(contents);
     }
 
     php_stream_close(stream);
@@ -2077,8 +2015,9 @@ HOEDOWN_METHOD(parseFile)
 HOEDOWN_METHOD(addRender)
 {
     char *name;
-    int name_len;
+    size_t name_len;
     zval *definition;
+    zend_string *key;
     php_hoedown_t *intern;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz",
@@ -2092,15 +2031,14 @@ HOEDOWN_METHOD(addRender)
 
     HOEDOWN_OBJ(intern, getThis());
 
-    if (!intern->options.renders) {
-        MAKE_STD_ZVAL(intern->options.renders);
-        array_init(intern->options.renders);
-    }
+    Z_TRY_ADDREF_P(definition);
 
-    Z_ADDREF_P(definition);
+    key = zend_string_init(name, name_len, 0);
 
-    zend_symtable_update(Z_ARRVAL_P(intern->options.renders), name, name_len+1,
-                         &definition, sizeof(zval*), NULL);
+    zend_symtable_update(Z_ARRVAL_P(&intern->options.renders),
+                         key, definition);
+
+    zend_string_release(key);
 
     RETVAL_TRUE;
 }
@@ -2115,21 +2053,21 @@ HOEDOWN_METHOD(getRenders)
 
     HOEDOWN_OBJ(intern, getThis());
 
-    if (!intern->options.renders) {
+    if (!zend_hash_num_elements(HASH_OF(&intern->options.renders))) {
         RETVAL_NULL();
     } else {
-        RETVAL_ZVAL(intern->options.renders, 1, 0);
+        RETVAL_ZVAL(&intern->options.renders, 1, 0);
     }
 }
 
 HOEDOWN_METHOD(ofString)
 {
     char *buf;
-    int buf_len;
+    size_t buf_len;
     zval *opts = NULL, *state = NULL;
     php_hoedown_options_t options;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az",
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az/",
                               &buf, &buf_len, &opts, &state) == FAILURE) {
         RETURN_FALSE;
     }
@@ -2145,6 +2083,7 @@ HOEDOWN_METHOD(ofString)
     }
 
     if (state) {
+        zval_ptr_dtor(state);
         ZVAL_NULL(state);
     }
 
@@ -2160,14 +2099,14 @@ HOEDOWN_METHOD(ofString)
 HOEDOWN_METHOD(ofFile)
 {
     char *filename;
-    int filename_len, len;
+    size_t filename_len;
     long maxlen = PHP_STREAM_COPY_ALL;
-    char *contents = NULL;
+    zend_string *contents = NULL;
     php_stream *stream;
     zval *opts = NULL, *state = NULL;
     php_hoedown_options_t options;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az",
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|az/",
                               &filename, &filename_len,
                               &opts, &state) == FAILURE) {
         RETURN_FALSE;
@@ -2192,23 +2131,25 @@ HOEDOWN_METHOD(ofFile)
     }
 
     if (state) {
+        zval_ptr_dtor(state);
         ZVAL_NULL(state);
     }
 
-    if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
-        /* markdown parse */
-        if (php_hoedown_parse(return_value, state, contents, len,
-                              &options TSRMLS_CC) != 0) {
-            RETVAL_FALSE;
+    contents = php_stream_copy_to_mem(stream, maxlen, 0);
+    if (contents) {
+        if (ZSTR_LEN(contents) > 0) {
+            /* markdown parse */
+            if (php_hoedown_parse(return_value, state,
+                                  ZSTR_VAL(contents), ZSTR_LEN(contents),
+                                  &options TSRMLS_CC) != 0) {
+                RETVAL_FALSE;
+            }
+        } else {
+            RETVAL_EMPTY_STRING();
         }
-    } else if (len == 0) {
-        RETVAL_EMPTY_STRING();
+        zend_string_release(contents);
     } else {
         RETVAL_FALSE;
-    }
-
-    if (contents) {
-        efree(contents);
     }
 
     php_stream_close(stream);
@@ -2234,55 +2175,41 @@ static zend_function_entry php_hoedown_methods[] = {
 };
 
 static void
-php_hoedown_free_storage(void *object TSRMLS_DC)
+php_hoedown_free_storage(zend_object *std)
 {
-    php_hoedown_t *intern = (php_hoedown_t *)object;
-
+    php_hoedown_t *intern;
+    intern = (php_hoedown_t *)((char *)std - XtOffsetOf(php_hoedown_t, std));
     if (!intern) {
         return;
     }
 
     php_hoedown_options_destroy(&intern->options TSRMLS_CC);
 
-    zend_object_std_dtor(&intern->std TSRMLS_CC);
-    efree(object);
+    zend_object_std_dtor(std);
 }
 
-static zend_object_value
+static zend_object *
 php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
 {
     php_hoedown_t *intern;
-    zend_object_value retval;
-#if ZEND_MODULE_API_NO < 20100525
-    zval *tmp;
-#endif
 
-    intern = (php_hoedown_t *)emalloc(sizeof(php_hoedown_t));
-    memset(intern, 0, sizeof(php_hoedown_t));
+    intern = ecalloc(1, sizeof(php_hoedown_t)+zend_object_properties_size(ce));
     if (ptr) {
         *ptr = intern;
     }
 
-    zend_object_std_init(&intern->std, ce TSRMLS_CC);
-#if ZEND_MODULE_API_NO >= 20100525
+    zend_object_std_init(&intern->std, ce);
     object_properties_init(&intern->std, ce);
-#else
-    zend_hash_copy(intern->std.properties, &ce->default_properties,
-                   (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *));
-#endif
+    rebuild_object_properties(&intern->std);
 
-    retval.handle = zend_objects_store_put(
-        intern, (zend_objects_store_dtor_t)zend_objects_destroy_object,
-        (zend_objects_free_object_storage_t)php_hoedown_free_storage,
-        NULL TSRMLS_CC);
-    retval.handlers = &php_hoedown_handlers;
+    intern->std.handlers = &php_hoedown_handlers;
 
     php_hoedown_options_init(&intern->options TSRMLS_CC);
 
-    return retval;
+    return &intern->std;
 }
 
-static zend_object_value
+static zend_object *
 php_hoedown_new(zend_class_entry *ce TSRMLS_DC)
 {
     return php_hoedown_new_ex(ce, NULL TSRMLS_CC);
@@ -2311,6 +2238,9 @@ ZEND_MINIT_FUNCTION(hoedown)
     memcpy(&php_hoedown_handlers, zend_get_std_object_handlers(),
            sizeof(zend_object_handlers));
 
+    php_hoedown_handlers.offset = XtOffsetOf(php_hoedown_t, std);
+    php_hoedown_handlers.dtor_obj = zend_objects_destroy_object;
+    php_hoedown_handlers.free_obj = php_hoedown_free_storage;
     php_hoedown_handlers.clone_obj = NULL;
 
     /* class constant */
