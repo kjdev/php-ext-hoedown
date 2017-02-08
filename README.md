@@ -495,7 +495,7 @@ Render functions:
 * tripleemphasis($text)
 * autolink($link, $type)
 * image($link, $title, $alt, $attr)
-* link($link, $title, $content, $attr)
+* link($content, $link, $title, $attr)
 * linebreak()
 * rawhtmltag($tag)
 * entity($entity)
