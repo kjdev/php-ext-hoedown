@@ -63,7 +63,7 @@ typedef struct {
     ZEND_MALIAS(Hoedown, alias, name, arg_info, flags)
 #define HOEDOWN_CONST_LONG(name, value) \
     zend_declare_class_constant_long(php_hoedown_ce, ZEND_STRS(#name)-1, \
-                                     value TSRMLS_CC)
+                                     value)
 
 #define HOEDOWN_DEFAULT_OPTIONS \
     "tables,fenced-code,autolink,strikethrough,no-intra-emphasis"
@@ -173,12 +173,12 @@ enum {
     self = (php_hoedown_t *)((char *)Z_OBJ_P(obj) - XtOffsetOf(php_hoedown_t, std))
 #else
 #define HOEDOWN_OBJ(self, obj) \
-    self = (php_hoedown_t *)zend_object_store_get_object(obj TSRMLS_CC)
+    self = (php_hoedown_t *)zend_object_store_get_object(obj)
 #endif
 
 static int
 php_hoedown_set_option(php_hoedown_options_t *options,
-                       int opt, zval *val TSRMLS_DC)
+                       int opt, zval *val)
 {
 #ifdef ZEND_ENGINE_3
     if (Z_TYPE_P(val) == IS_LONG &&
@@ -322,7 +322,7 @@ php_hoedown_set_option(php_hoedown_options_t *options,
             }
             if (Z_TYPE_P(val) == IS_ARRAY) {
                 php_array_merge(Z_ARRVAL_P(options->renders), Z_ARRVAL_P(val),
-                                1 TSRMLS_CC);
+                                1);
                 return 0;
             }
             break;
@@ -382,14 +382,14 @@ php_hoedown_set_option(php_hoedown_options_t *options,
 }
 
 static void
-php_hoedown_set_options(php_hoedown_options_t *options, zval *val TSRMLS_DC)
+php_hoedown_set_options(php_hoedown_options_t *options, zval *val)
 {
 #ifdef ZEND_ENGINE_3
     zval *value;
     ulong key;
 
     ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(val), key, value) {
-        php_hoedown_set_option(options, key, value TSRMLS_CC);
+        php_hoedown_set_option(options, key, value);
     } ZEND_HASH_FOREACH_END();
 #else
     zval **value;
@@ -403,7 +403,7 @@ php_hoedown_set_options(php_hoedown_options_t *options, zval *val TSRMLS_DC)
         if (zend_hash_get_current_key_ex(Z_ARRVAL_P(val),
                                          &key, &key_len, &key_index,
                                          0, NULL) == HASH_KEY_IS_LONG) {
-            php_hoedown_set_option(options, key_index, *value TSRMLS_CC);
+            php_hoedown_set_option(options, key_index, *value);
         } else {
             HOEDOWN_ERR(E_WARNING, "Invalid configuration options");
         }
@@ -511,7 +511,7 @@ php_hoedown_set_options_flag(php_hoedown_options_t *options,
 }
 
 static void
-php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
+php_hoedown_options_init(php_hoedown_options_t *options)
 {
     char *opts, *p1, *p2, *endp;
 
@@ -556,7 +556,7 @@ php_hoedown_options_init(php_hoedown_options_t *options TSRMLS_DC)
 }
 
 static void
-php_hoedown_options_destroy(php_hoedown_options_t *options TSRMLS_DC)
+php_hoedown_options_destroy(php_hoedown_options_t *options)
 {
 #ifdef ZEND_ENGINE_3
     if (!Z_ISUNDEF(options->toc.header)) {
@@ -596,7 +596,7 @@ HOEDOWN_METHOD(__construct)
     zval *options = NULL;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a",
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "|a",
                               &options) == FAILURE) {
         RETURN_FALSE;
     }
@@ -604,7 +604,7 @@ HOEDOWN_METHOD(__construct)
     HOEDOWN_OBJ(intern, getThis());
 
     if (options) {
-        php_hoedown_set_options(&intern->options, options TSRMLS_CC);
+        php_hoedown_set_options(&intern->options, options);
     }
 }
 
@@ -618,14 +618,14 @@ HOEDOWN_METHOD(setOption)
     zval *value;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lz",
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lz",
                               &option, &value) == FAILURE) {
         RETURN_FALSE;
     }
 
     HOEDOWN_OBJ(intern, getThis());
 
-    if (php_hoedown_set_option(&intern->options, option, value TSRMLS_CC) != 0) {
+    if (php_hoedown_set_option(&intern->options, option, value) != 0) {
         RETURN_FALSE;
     }
 
@@ -641,7 +641,7 @@ HOEDOWN_METHOD(getOption)
 #endif
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l",
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l",
                               &option) == FAILURE) {
         RETURN_FALSE;
     }
@@ -703,18 +703,18 @@ HOEDOWN_METHOD(setOptions)
     zval *options;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a",
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "a",
                               &options) == FAILURE) {
         RETURN_FALSE;
     }
 
     HOEDOWN_OBJ(intern, getThis());
 
-    php_hoedown_set_options(&intern->options, options TSRMLS_CC);
+    php_hoedown_set_options(&intern->options, options);
 }
 
 static zval *
-php_hoedown_is_renderer(char *name, const hoedown_renderer_data *data TSRMLS_DC)
+php_hoedown_is_renderer(char *name, const hoedown_renderer_data *data)
 {
     hoedown_html_renderer_state *state = data->opaque;
     zval *renders = NULL;
@@ -761,7 +761,7 @@ php_hoedown_is_renderer(char *name, const hoedown_renderer_data *data TSRMLS_DC)
 
 static void
 php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
-                         zval *parameters TSRMLS_DC)
+                         zval *parameters)
 {
     zval fname;
 #ifdef ZEND_ENGINE_3
@@ -773,8 +773,8 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
     args[0] = *definition;
     args[1] = *parameters;
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
     if (Z_TYPE(result) == IS_STRING) {
         hoedown_buffer_put(ob, Z_STRVAL(result), Z_STRLEN(result));
     }
@@ -790,8 +790,8 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
     args[0] = &definition;
     args[1] = &parameters;
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
     if (result) {
         if (Z_TYPE_P(result) == IS_STRING) {
             hoedown_buffer_put(ob, Z_STRVAL_P(result), Z_STRLEN_P(result));
@@ -805,7 +805,7 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
 #define PHP_HOEDOWN_RENDERER_SETUP() zval *definition, parameters
 #define PHP_HOEDOWN_RENDERER_INIT(f, x, n, r)                 \
     do {                                                      \
-        definition = php_hoedown_is_renderer(f, x TSRMLS_CC); \
+        definition = php_hoedown_is_renderer(f, x); \
         if (!definition) {                                    \
             r;                                                \
         }                                                     \
@@ -822,13 +822,13 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
 #define PHP_HOEDOWN_RENDERER_PARAMETER_LONG(n) \
     add_next_index_long(&parameters, n)
 #define PHP_HOEDOWN_RENDERER_RUN() \
-    php_hoedown_run_renderer(ob, definition, &parameters TSRMLS_CC)
+    php_hoedown_run_renderer(ob, definition, &parameters)
 #define PHP_HOEDOWN_RENDERER_DESTROY() zval_dtor(&parameters)
 #else
 #define PHP_HOEDOWN_RENDERER_SETUP() zval *definition, *parameters
 #define PHP_HOEDOWN_RENDERER_INIT(f, x, n, r)                 \
     do {                                                      \
-        definition = php_hoedown_is_renderer(f, x TSRMLS_CC); \
+        definition = php_hoedown_is_renderer(f, x); \
         if (!definition) {                                    \
             r;                                                \
         }                                                     \
@@ -846,7 +846,7 @@ php_hoedown_run_renderer(hoedown_buffer *ob, zval *definition,
 #define PHP_HOEDOWN_RENDERER_PARAMETER_LONG(n) \
     add_next_index_long(parameters, n)
 #define PHP_HOEDOWN_RENDERER_RUN() \
-    php_hoedown_run_renderer(ob, definition, parameters TSRMLS_CC)
+    php_hoedown_run_renderer(ob, definition, parameters)
 #define PHP_HOEDOWN_RENDERER_DESTROY() zval_ptr_dtor(&parameters)
 #endif
 
@@ -857,8 +857,6 @@ php_hoedown_renderer_blockcode(hoedown_buffer *ob,
                                const hoedown_buffer *attr,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("blockcode", data, 3, return);
@@ -877,8 +875,6 @@ php_hoedown_renderer_blockquote(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("blockquote", data, 1, return);
@@ -895,8 +891,6 @@ php_hoedown_renderer_blockhtml(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("blockhtml", data, 1, return);
@@ -915,8 +909,6 @@ php_hoedown_renderer_header(hoedown_buffer *ob,
                             int level,
                             const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("header", data, 3, return);
@@ -934,8 +926,6 @@ static void
 php_hoedown_renderer_hrule(hoedown_buffer *ob,
                            const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("hrule", data, 0, return);
@@ -952,8 +942,6 @@ php_hoedown_renderer_list(hoedown_buffer *ob,
                           unsigned int flags,
                           const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("list", data, 3, return);
@@ -974,8 +962,6 @@ php_hoedown_renderer_listitem(hoedown_buffer *ob,
                               unsigned int *flags,
                               const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("listitem", data, 3, return);
@@ -994,8 +980,6 @@ php_hoedown_renderer_paragraph(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("paragraph", data, 1, return);
@@ -1013,8 +997,6 @@ php_hoedown_renderer_table(hoedown_buffer *ob,
                            const hoedown_buffer *attr,
                            const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("table", data, 2, return);
@@ -1032,8 +1014,6 @@ php_hoedown_renderer_table_header(hoedown_buffer *ob,
                                   const hoedown_buffer *text,
                                   const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("tableheader", data, 1, return);
@@ -1050,8 +1030,6 @@ php_hoedown_renderer_table_body(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("tablebody", data, 1, return);
@@ -1068,8 +1046,6 @@ php_hoedown_renderer_table_row(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("tablerow", data, 1, return);
@@ -1087,8 +1063,6 @@ php_hoedown_renderer_table_cell(hoedown_buffer *ob,
                                 unsigned int flags,
                                 const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("tablecell", data, 2, return);
@@ -1106,8 +1080,6 @@ php_hoedown_renderer_footnotes(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("footnotes", data, 1, return);
@@ -1125,8 +1097,6 @@ php_hoedown_renderer_footnote_def(hoedown_buffer *ob,
                                   unsigned int num,
                                   const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("footnotedef", data, 2, return);
@@ -1145,8 +1115,6 @@ php_hoedown_renderer_autolink(hoedown_buffer *ob,
                               hoedown_autolink_type type,
                               const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("autolink", data, 2, return 0);
@@ -1167,8 +1135,6 @@ php_hoedown_renderer_codespan(hoedown_buffer *ob,
                               const hoedown_buffer *attr,
                               const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("codespan", data, 2, return 0);
@@ -1188,8 +1154,6 @@ php_hoedown_renderer_double_emphasis(hoedown_buffer *ob,
                                      const hoedown_buffer *text,
                                      const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("doubleemphasis", data, 1, return 0);
@@ -1208,8 +1172,6 @@ php_hoedown_renderer_emphasis(hoedown_buffer *ob,
                               const hoedown_buffer *text,
                               const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("emphasis", data, 1, return 0);
@@ -1228,8 +1190,6 @@ php_hoedown_renderer_underline(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("underline", data, 1, return 0);
@@ -1248,8 +1208,6 @@ php_hoedown_renderer_highlight(hoedown_buffer *ob,
                                const hoedown_buffer *text,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("highlight", data, 1, return 0);
@@ -1268,8 +1226,6 @@ php_hoedown_renderer_quote(hoedown_buffer *ob,
                            const hoedown_buffer *text,
                            const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("quote", data, 1, return 0);
@@ -1291,8 +1247,6 @@ php_hoedown_renderer_image(hoedown_buffer *ob,
                            const hoedown_buffer *attr,
                            const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("image", data, 4, return 0);
@@ -1313,8 +1267,6 @@ static int
 php_hoedown_renderer_linebreak(hoedown_buffer *ob,
                                const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("linebreak", data, 0, return 0);
@@ -1334,8 +1286,6 @@ php_hoedown_renderer_link(hoedown_buffer *ob,
                           const hoedown_buffer *attr,
                           const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("link", data, 4, return 0);
@@ -1357,8 +1307,6 @@ php_hoedown_renderer_raw_html(hoedown_buffer *ob,
                               const hoedown_buffer *tag,
                               const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("rawhtml", data, 1, return 0);
@@ -1377,8 +1325,6 @@ php_hoedown_renderer_triple_emphasis(hoedown_buffer *ob,
                                      const hoedown_buffer *text,
                                      const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("tripleemphasis", data, 1, return 0);
@@ -1397,8 +1343,6 @@ php_hoedown_renderer_strikethrough(hoedown_buffer *ob,
                                    const hoedown_buffer *text,
                                    const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("strikethrough", data, 1, return 0);
@@ -1417,8 +1361,6 @@ php_hoedown_renderer_superscript(hoedown_buffer *ob,
                                  const hoedown_buffer *text,
                                  const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("superscript", data, 1, return 0);
@@ -1437,8 +1379,6 @@ php_hoedown_renderer_footnote_ref(hoedown_buffer *ob,
                                   unsigned int num,
                                   const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("footnoteref", data, 1, return 0);
@@ -1457,8 +1397,6 @@ php_hoedown_renderer_entity(hoedown_buffer *ob,
                             const hoedown_buffer *entity,
                             const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("entity", data, 1, return);
@@ -1475,8 +1413,6 @@ php_hoedown_renderer_math(hoedown_buffer *ob,
                           const hoedown_buffer *text, int displaymode,
                           const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("math", data, 2, return 0);
@@ -1496,8 +1432,6 @@ php_hoedown_renderer_normal_text(hoedown_buffer *ob,
                                  const hoedown_buffer *text,
                                  const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("normaltext", data, 1, return);
@@ -1514,8 +1448,6 @@ php_hoedown_renderer_user_block(hoedown_buffer *ob,
                                 const hoedown_buffer *text,
                                 const hoedown_renderer_data *data)
 {
-    TSRMLS_FETCH();
-
     PHP_HOEDOWN_RENDERER_SETUP();
 
     PHP_HOEDOWN_RENDERER_INIT("userblock", data, 1, return);
@@ -1535,7 +1467,6 @@ php_hoedown_callback_user_block(uint8_t *text, size_t size,
     zval *definition = NULL;
     zval fname;
     long length = 0;
-    TSRMLS_FETCH();
 
 #ifdef ZEND_ENGINE_3
     zval parameters;
@@ -1552,13 +1483,12 @@ php_hoedown_callback_user_block(uint8_t *text, size_t size,
     ZVAL_STRINGL(&fname, "call_user_func_array",
                  sizeof("call_user_func_array")-1);
 
-
     args[0] = *definition;
     array_init_size(&args[1], 1);
     add_next_index_stringl(&args[1], (char *)text, size);
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
 
     if (Z_TYPE(result) == IS_LONG) {
         length = Z_LVAL(result);
@@ -1590,8 +1520,8 @@ php_hoedown_callback_user_block(uint8_t *text, size_t size,
     args[0] = &definition;
     args[1] = &parameters;
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
 
     if (result) {
         if (Z_TYPE_P(result) == IS_LONG) {
@@ -1608,7 +1538,7 @@ php_hoedown_callback_user_block(uint8_t *text, size_t size,
 
 static void
 php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
-                         char *name TSRMLS_DC)
+                         char *name)
 {
     char *error = NULL;
     zend_bool retval;
@@ -1642,7 +1572,7 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
     }
 
     retval = zend_is_callable_ex(*definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+                                 &error);
 #endif
     if (error) {
         efree(error);
@@ -1650,7 +1580,7 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
     if (!retval) {
         HOEDOWN_ERR(E_WARNING, "Call to undefined render '%s'", name);
         /*
-        zend_throw_exception_ex(NULL, 0 TSRMLS_CC,
+        zend_throw_exception_ex(NULL, 0,
                                 "Call to undefined render '%s'", name);
         */
         return;
@@ -1730,7 +1660,7 @@ php_hoedown_set_renderer(zval *renders, hoedown_renderer *renderer,
 }
 
 static int
-php_hoedown_user_block(zval *definition TSRMLS_DC)
+php_hoedown_user_block(zval *definition)
 {
     char *error = NULL;
     zend_bool retval;
@@ -1748,7 +1678,7 @@ php_hoedown_user_block(zval *definition TSRMLS_DC)
     }
 
     retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+                                 &error);
 #endif
     if (error) {
         efree(error);
@@ -1762,7 +1692,7 @@ php_hoedown_user_block(zval *definition TSRMLS_DC)
 
 static int
 php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
-                                zval *definition, zval **return_state TSRMLS_DC)
+                                zval *definition, zval **return_state)
 {
     char *error = NULL;
     zval fname;
@@ -1792,8 +1722,8 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
     array_init_size(&args[1], 1);
     add_next_index_stringl(&args[1], (char *)text, size);
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
 
     if (!Z_ISUNDEF(result)) {
         zend_string *key = zend_string_init("meta", sizeof("meta")-1, 0);
@@ -1822,7 +1752,7 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
     }
 
     retval = zend_is_callable_ex(definition, NULL, 0, NULL, NULL, NULL,
-                                 &error TSRMLS_CC);
+                                 &error);
     if (error) {
         efree(error);
     }
@@ -1841,8 +1771,8 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
     args[0] = &definition;
     args[1] = &parameters;
 
-    call_user_function_ex(EG(function_table), NULL, &fname,
-                          &result, 2, args, 0, NULL TSRMLS_CC);
+    call_user_function(EG(function_table), NULL, &fname,
+                          &result, 2, args);
 
     if (result) {
         if (Z_TYPE_PP(return_state) != IS_ARRAY) {
@@ -1866,7 +1796,7 @@ php_hoedown_callback_meta_parse(uint8_t *text, size_t size,
 static int
 php_hoedown_parse(zval *return_value, zval *return_state,
                   char *contents, size_t length,
-                  php_hoedown_options_t *options TSRMLS_DC)
+                  php_hoedown_options_t *options)
 {
     hoedown_buffer *buf, *meta;
     hoedown_renderer *renderer;
@@ -1910,7 +1840,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                 state->toc_data.footer = Z_STRVAL_P(&options->toc.footer);
             }
 
-            if (php_hoedown_user_block(&options->user_block TSRMLS_CC)) {
+            if (php_hoedown_user_block(&options->user_block)) {
 #else
             if (options->toc.header) {
                 state->toc_data.header = Z_STRVAL_P(options->toc.header);
@@ -1919,7 +1849,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                 state->toc_data.footer = Z_STRVAL_P(options->toc.footer);
             }
 
-            if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
+            if (php_hoedown_user_block(options->user_block)) {
 #endif
                 document = hoedown_document_new(renderer,
                                                 options->extension, 16,
@@ -1992,7 +1922,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                                       key, value) {
             if (key) {
                 php_hoedown_set_renderer(&options->renders, renderer,
-                                         ZSTR_VAL(key) TSRMLS_CC);
+                                         ZSTR_VAL(key));
             }
         } ZEND_HASH_FOREACH_END();
     }
@@ -2012,7 +1942,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
                 break;
             }
             php_hoedown_set_renderer(options->renders, renderer,
-                                     str_key TSRMLS_CC);
+                                     str_key);
         } while (!zend_hash_move_forward_ex(h, &pos));
     }
 #endif
@@ -2023,9 +1953,9 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 
     /* init document */
 #ifdef ZEND_ENGINE_3
-    if (php_hoedown_user_block(&options->user_block TSRMLS_CC)) {
+    if (php_hoedown_user_block(&options->user_block)) {
 #else
-    if (php_hoedown_user_block(options->user_block TSRMLS_CC)) {
+    if (php_hoedown_user_block(options->user_block)) {
 #endif
         document = hoedown_document_new(renderer,
                                         options->extension, 16,
@@ -2057,7 +1987,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 #ifdef ZEND_ENGINE_3
         if (php_hoedown_callback_meta_parse(meta->data, meta->size,
                                             &options->meta_parse,
-                                            &return_state TSRMLS_CC) == 0) {
+                                            &return_state) == 0) {
             zval zv;
             zend_string *key = zend_string_init("meta", sizeof("meta")-1, 0);
 
@@ -2074,7 +2004,7 @@ php_hoedown_parse(zval *return_value, zval *return_state,
 #else
         if (php_hoedown_callback_meta_parse(meta->data, meta->size,
                                             options->meta_parse,
-                                            &return_state TSRMLS_CC) == 0) {
+                                            &return_state) == 0) {
             zval *zv;
 
             MAKE_STD_ZVAL(zv);
@@ -2109,7 +2039,7 @@ HOEDOWN_METHOD(parse)
     int buf_len;
 #endif
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(),
 #ifdef ZEND_ENGINE_3
                               "s|z/",
 #else
@@ -2134,7 +2064,7 @@ HOEDOWN_METHOD(parse)
 
     /* markdown parse */
     if (php_hoedown_parse(return_value, state, buf, buf_len,
-                          &intern->options TSRMLS_CC) != 0) {
+                          &intern->options) != 0) {
         RETURN_FALSE;
     }
 }
@@ -2155,7 +2085,7 @@ HOEDOWN_METHOD(parseFile)
     php_stream *stream;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(),
 #ifdef ZEND_ENGINE_3
                               "s|z/",
 #else
@@ -2192,7 +2122,7 @@ HOEDOWN_METHOD(parseFile)
             /* markdown parse */
             if (php_hoedown_parse(return_value, state,
                                   ZSTR_VAL(contents), ZSTR_LEN(contents),
-                                  &intern->options TSRMLS_CC) != 0) {
+                                  &intern->options) != 0) {
                 RETVAL_FALSE;
             }
         } else {
@@ -2206,7 +2136,7 @@ HOEDOWN_METHOD(parseFile)
     if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
         /* markdown parse */
         if (php_hoedown_parse(return_value, state, contents, len,
-                              &intern->options TSRMLS_CC) != 0) {
+                              &intern->options) != 0) {
             RETVAL_FALSE;
         }
     } else if (len == 0) {
@@ -2235,7 +2165,7 @@ HOEDOWN_METHOD(addRender)
     zval *definition;
     php_hoedown_t *intern;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz",
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "sz",
                               &name, &name_len, &definition) == FAILURE) {
         RETURN_FALSE;
     }
@@ -2308,7 +2238,7 @@ HOEDOWN_METHOD(ofString)
     zval *opts = NULL, *state = NULL;
     php_hoedown_options_t options;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(),
 #ifdef ZEND_ENGINE_3
                               "s|az/",
 #else
@@ -2323,9 +2253,9 @@ HOEDOWN_METHOD(ofString)
     }
 
     /* setting options */
-    php_hoedown_options_init(&options TSRMLS_CC);
+    php_hoedown_options_init(&options);
     if (opts) {
-        php_hoedown_set_options(&options, opts TSRMLS_CC);
+        php_hoedown_set_options(&options, opts);
     }
 
     if (state) {
@@ -2337,11 +2267,11 @@ HOEDOWN_METHOD(ofString)
 
     /* markdown parse */
     if (php_hoedown_parse(return_value, state, buf, buf_len,
-                          &options TSRMLS_CC) != 0) {
+                          &options) != 0) {
         RETVAL_FALSE;
     }
 
-    php_hoedown_options_destroy(&options TSRMLS_CC);
+    php_hoedown_options_destroy(&options);
 }
 
 HOEDOWN_METHOD(ofFile)
@@ -2360,7 +2290,7 @@ HOEDOWN_METHOD(ofFile)
     zval *opts = NULL, *state = NULL;
     php_hoedown_options_t options;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(),
 #ifdef ZEND_ENGINE_3
                               "s|az/",
 #else
@@ -2376,16 +2306,16 @@ HOEDOWN_METHOD(ofFile)
     }
 
     /* setting options */
-    php_hoedown_options_init(&options TSRMLS_CC);
+    php_hoedown_options_init(&options);
     if (opts) {
-        php_hoedown_set_options(&options, opts TSRMLS_CC);
+        php_hoedown_set_options(&options, opts);
     }
 
     /* read file */
     stream = php_stream_open_wrapper_ex(filename, "rb",
                                         REPORT_ERRORS, NULL, NULL);
     if (!stream) {
-        php_hoedown_options_destroy(&options TSRMLS_CC);
+        php_hoedown_options_destroy(&options);
         RETURN_FALSE;
     }
 
@@ -2403,7 +2333,7 @@ HOEDOWN_METHOD(ofFile)
             /* markdown parse */
             if (php_hoedown_parse(return_value, state,
                                   ZSTR_VAL(contents), ZSTR_LEN(contents),
-                                  &options TSRMLS_CC) != 0) {
+                                  &options) != 0) {
                 RETVAL_FALSE;
             }
         } else {
@@ -2417,7 +2347,7 @@ HOEDOWN_METHOD(ofFile)
     if ((len = php_stream_copy_to_mem(stream, &contents, maxlen, 0)) > 0) {
         /* markdown parse */
         if (php_hoedown_parse(return_value, state, contents, len,
-                              &options TSRMLS_CC) != 0) {
+                              &options) != 0) {
             RETVAL_FALSE;
         }
     } else if (len == 0) {
@@ -2432,7 +2362,7 @@ HOEDOWN_METHOD(ofFile)
 #endif
 
     php_stream_close(stream);
-    php_hoedown_options_destroy(&options TSRMLS_CC);
+    php_hoedown_options_destroy(&options);
 }
 
 static zend_function_entry php_hoedown_methods[] = {
@@ -2463,13 +2393,13 @@ php_hoedown_free_storage(zend_object *std)
         return;
     }
 
-    php_hoedown_options_destroy(&intern->options TSRMLS_CC);
+    php_hoedown_options_destroy(&intern->options);
 
     zend_object_std_dtor(std);
 }
 
 static zend_object *
-php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
+php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr)
 {
     php_hoedown_t *intern;
 
@@ -2484,20 +2414,20 @@ php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
 
     intern->std.handlers = &php_hoedown_handlers;
 
-    php_hoedown_options_init(&intern->options TSRMLS_CC);
+    php_hoedown_options_init(&intern->options);
 
     return &intern->std;
 }
 
 static zend_object *
-php_hoedown_new(zend_class_entry *ce TSRMLS_DC)
+php_hoedown_new(zend_class_entry *ce)
 {
-    return php_hoedown_new_ex(ce, NULL TSRMLS_CC);
+    return php_hoedown_new_ex(ce, NULL);
 }
 
 #else
 static void
-php_hoedown_free_storage(void *object TSRMLS_DC)
+php_hoedown_free_storage(void *object)
 {
     php_hoedown_t *intern = (php_hoedown_t *)object;
 
@@ -2505,14 +2435,14 @@ php_hoedown_free_storage(void *object TSRMLS_DC)
         return;
     }
 
-    php_hoedown_options_destroy(&intern->options TSRMLS_CC);
+    php_hoedown_options_destroy(&intern->options);
 
-    zend_object_std_dtor(&intern->std TSRMLS_CC);
+    zend_object_std_dtor(&intern->std);
     efree(object);
 }
 
 static zend_object_value
-php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
+php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr)
 {
     php_hoedown_t *intern;
     zend_object_value retval;
@@ -2526,7 +2456,7 @@ php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
         *ptr = intern;
     }
 
-    zend_object_std_init(&intern->std, ce TSRMLS_CC);
+    zend_object_std_init(&intern->std, ce);
 #if ZEND_MODULE_API_NO >= 20100525
     object_properties_init(&intern->std, ce);
 #else
@@ -2538,18 +2468,18 @@ php_hoedown_new_ex(zend_class_entry *ce, php_hoedown_t **ptr TSRMLS_DC)
     retval.handle = zend_objects_store_put(
         intern, (zend_objects_store_dtor_t)zend_objects_destroy_object,
         (zend_objects_free_object_storage_t)php_hoedown_free_storage,
-        NULL TSRMLS_CC);
+        NULL);
     retval.handlers = &php_hoedown_handlers;
 
-    php_hoedown_options_init(&intern->options TSRMLS_CC);
+    php_hoedown_options_init(&intern->options);
 
     return retval;
 }
 
 static zend_object_value
-php_hoedown_new(zend_class_entry *ce TSRMLS_DC)
+php_hoedown_new(zend_class_entry *ce)
 {
-    return php_hoedown_new_ex(ce, NULL TSRMLS_CC);
+    return php_hoedown_new_ex(ce, NULL);
 }
 #endif
 
@@ -2568,7 +2498,7 @@ ZEND_MINIT_FUNCTION(hoedown)
 
     ce.create_object = php_hoedown_new;
 
-    php_hoedown_ce = zend_register_internal_class(&ce TSRMLS_CC);
+    php_hoedown_ce = zend_register_internal_class(&ce);
     if (php_hoedown_ce == NULL) {
         return FAILURE;
     }

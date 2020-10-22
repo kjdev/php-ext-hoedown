@@ -39,5 +39,5 @@ echo $hoedown->parseFile('');
 <p>foo</p>
 == file: hoge.md (none) ==
 
-Warning: Hoedown::parseFile(%s): failed to open stream: No such file or directory in %s on line %d
+Warning: Hoedown::parseFile(%s): Failed to open stream: No such file or directory in %s on line %d
 == file: empty ==

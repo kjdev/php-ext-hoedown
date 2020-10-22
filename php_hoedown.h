@@ -28,7 +28,7 @@ ZEND_END_MODULE_GLOBALS(hoedown)
 #    define HOEDOWN_G(v) (hoedown_globals.v)
 #endif
 
-#define HOEDOWN_ERR(e, ...) php_error_docref(NULL TSRMLS_CC, e, __VA_ARGS__)
+#define HOEDOWN_ERR(e, ...) php_error_docref(NULL, e, __VA_ARGS__)
 
 #ifndef ZED_FE_END
 #define ZEND_FE_END { NULL, NULL, NULL, 0, 0 }
