@@ -204,5 +204,5 @@ echo Hoedown::ofFile('');
 </ul>
 == ofFile : none ==
 
-Warning: Hoedown::ofFile(%s): failed to open stream: No such file or directory in %s on line %d
+Warning: Hoedown::ofFile(%s): Failed to open stream: No such file or directory in %s on line %d
 == ofFile : empty ==

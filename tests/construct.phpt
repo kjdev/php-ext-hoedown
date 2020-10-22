@@ -21,7 +21,11 @@ $hoedown = new Hoedown(array(Hoedown::AUTOLINK));
 echo $hoedown->parse($text);
 
 echo "== options: 0 ==\n";
-$hoedown = new Hoedown(0);
+try {
+    $hoedown = new Hoedown(0);
+} catch (TypeError $e) {
+    echo $e->getMessage(), "\n";
+}
 echo $hoedown->parse($text);
 
 --EXPECTF--
@@ -38,8 +42,7 @@ echo $hoedown->parse($text);
 
 <p><a href="http://www.php.net/">http://www.php.net/</a></p>
 == options: 0 ==
-
-Warning: Hoedown::__construct() expects parameter 1 to be array, integer given in %s on line %d
+Hoedown::__construct(): Argument #1 ($options) must be of type array, int given
 <h1>php</h1>
 
 <p><a href="http://www.php.net/">http://www.php.net/</a></p>
