@@ -39,7 +39,7 @@ echo $hoedown->parse($text);
 <p><a href="http://www.php.net/">http://www.php.net/</a></p>
 == options: 0 ==
 
-Warning: Hoedown::__construct() expects parameter 1 to be array, integer given in %s on line %d
+Warning: Hoedown::__construct() expects parameter 1 to be array, %s given in %s on line %d
 <h1>php</h1>
 
 <p><a href="http://www.php.net/">http://www.php.net/</a></p>
